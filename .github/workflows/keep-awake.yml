@@ -1,0 +1,59 @@
+name: keep-awake
+
+# Mantiene despierta la instancia gratuita de Render, con descanso de 02:00 a
+# 06:00. Render duerme a los 15 minutos sin peticiones, asi que el ping va
+# cada 14.
+#
+# Antes de activarlo, lee docs/DEPLOY.md, seccion "Mantenerla despierta": en
+# un repositorio PRIVADO esto no cabe en los 2.000 minutos gratuitos de
+# Actions. Hace falta repositorio publico (Actions sin limite) o un pinger
+# externo.
+#
+# Las horas de cron de GitHub son UTC siempre; no existe zona horaria aqui.
+# Tal como esta, descansa de 02:00 a 06:00 en UTC-5 (Bogota, Lima).
+# Para otra zona, cambia la lista de horas por la de tu fila:
+#
+#   UTC-6  -> "*/14 0-7,12-23 * * *"
+#   UTC-5  -> "*/14 0-6,11-23 * * *"   <- activa
+#   UTC-3  -> "*/14 0-4,9-23 * * *"
+#   UTC+1  -> "*/14 0,5-23 * * *"      (Madrid en invierno)
+#   UTC+2  -> "*/14 4-23 * * *"        (Madrid en verano)
+#
+# El cron de GitHub no es puntual: en horas punta se retrasa, y a veces se
+# salta una ejecucion. Un retraso de mas de un minuto deja dormir la
+# instancia, asi que esto reduce los arranques en frio, no los elimina.
+# GitHub tambien desactiva los workflows programados tras 60 dias sin
+# actividad en el repositorio.
+
+on:
+  schedule:
+    - cron: "*/14 0-6,11-23 * * *"
+  workflow_dispatch:
+
+# Sin permisos sobre el repositorio: este workflow solo hace una peticion
+# HTTP saliente.
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Despertar la instancia
+        env:
+          # Variable de repositorio (Settings -> Secrets and variables ->
+          # Actions -> Variables), no secreto: la URL es publica.
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          set -u
+          if [ -z "${APP_URL}" ]; then
+            echo "Falta la variable de repositorio APP_URL (p. ej. https://taskforge.onrender.com)."
+            exit 1
+          fi
+          # Un arranque en frio tarda hasta un minuto: el timeout debe
+          # sobrevivirlo, o el ping falla justo cuando mas hace falta.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            --max-time 120 --retry 2 --retry-delay 15 --retry-all-errors \
+            "${APP_URL}/api/ping")
+          echo "GET ${APP_URL}/api/ping -> HTTP ${code}"
+          test "${code}" = "200"

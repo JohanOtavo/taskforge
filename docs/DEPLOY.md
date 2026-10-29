@@ -108,6 +108,53 @@ en `DATABASE_URL_DIRECT` (paso 1).
   invita copia el enlace y lo manda por su cuenta. Si la dirección ya tiene
   cuenta, entra en el acto y no hace falta enlace.
 
+### Mantenerla despierta (descanso de 02:00 a 06:00)
+
+El repositorio trae `.github/workflows/keep-awake.yml`: hace `GET /api/ping`
+cada 14 minutos (Render duerme a los 15) y no se ejecuta entre las 02:00 y las
+06:00. Esas cuatro horas de descanso no son solo por elegancia: 20 h × 30 días
+= **600 horas de instancia**, con margen frente al tope de 750 del plan
+gratuito. Despierta 24/7 serían 744, sin margen ninguno.
+
+**El ping no toca la base de datos, y es a propósito.** Render solo necesita
+una petición HTTP. Si el ping consultara Postgres, despertaría también el
+cómputo de Neon cada 14 minutos: 0,25 CU × 20 h × 30 días ≈ **150 CU-horas**
+contra las 100 del plan gratuito, y la base se suspendería a mitad de mes por
+mantener viva una aplicación que nadie estaba usando. Por eso hay dos rutas:
+`/api/ping` (sin base, para el cron) y `/api/health` (con base, para el
+comprobador de Render y para diagnosticar).
+
+Para activarlo:
+
+1. **Settings → Secrets and variables → Actions → Variables**, nueva variable
+   `APP_URL` con tu URL de Render. Es variable, no secreto: la URL es pública.
+2. La hora del cron es **UTC siempre**. El archivo viene configurado para
+   UTC-5 (Bogotá, Lima); si tu zona es otra, cambia la lista de horas por la
+   de tu fila, están en el comentario de cabecera.
+3. Pruébalo a mano: pestaña **Actions → keep-awake → Run workflow**.
+
+Dos límites que conviene saber antes de confiar en esto:
+
+- **En un repositorio privado no cabe.** Actions cobra por trabajo redondeando
+  al minuto: 86 pings al día ≈ **2.580 minutos al mes** contra los 2.000
+  gratuitos. Y no se arregla espaciando el ping, porque pasar de 15 minutos es
+  justo lo que deja dormir a Render. Las salidas son dos: repositorio
+  **público** (Actions sin límite de minutos), o un **pinger externo**
+  (cron-job.org o UptimeRobot en plan gratuito: eligen zona horaria y rango de
+  horas en su propia interfaz, y no gastan minutos de Actions). Si el
+  repositorio va a seguir privado, usa el pinger externo y deja este workflow
+  desactivado.
+- **El cron de GitHub no es puntual:** en horas punta se retrasa y a veces se
+  salta ejecuciones, así que esto reduce los arranques en frío, no los
+  elimina. Además GitHub desactiva los workflows programados tras 60 días sin
+  actividad en el repositorio.
+
+> Si ves que las CU-horas de Neon se consumen sin que nadie use la aplicación,
+> el culpable es el comprobador de salud de Render llamando a `/api/health`:
+> cambia `healthCheckPath` a `/api/ping` en `render.yaml`. Pierdes la
+> validación de la base de datos en cada despliegue, pero dejas de gastar la
+> cuota.
+
 ---
 
 ## Opción B — Northflank Sandbox
