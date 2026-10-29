@@ -1,0 +1,428 @@
+// TaskForge — esquema de datos
+//
+// Decisiones clave (ver docs/ARCHITECTURE.md):
+//  - `orgId` se desnormaliza en Issue/Comment y la FK es compuesta contra
+//    Project(id, orgId): un Issue cuyo orgId no coincida con su proyecto es
+//    inexpresable a nivel de base de datos. Backstop estructural contra IDOR.
+//  - El estado de un issue vive en WorkflowState, NO se deriva de la columna.
+//    La columna es solo colocacion visual (NULL = backlog).
+//  - `position` es un string (fractional indexing), no un float: los puntos
+//    medios en double se agotan tras ~50 inserciones en el mismo borde.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
+}
+
+// ---------------------------------------------------------------- identidad
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String
+  // Nullable: un futuro alta por OAuth no tiene contrasena.
+  passwordHash String?
+  imageUrl     String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  sessions       Session[]
+  memberships    Membership[]
+  projectMembers ProjectMember[]
+  reportedIssues Issue[]         @relation("IssueReporter")
+  assignedIssues Issue[]         @relation("IssueAssignee")
+  comments       Comment[]
+  auditLogs      AuditLog[]
+  sentInvites    Invitation[]    @relation("InvitationInviter")
+}
+
+/// Sesion opaca respaldada en base de datos. Solo se almacena el hash del
+/// token, igual que una contrasena: un volcado de la tabla no permite
+/// suplantar a nadie. Revocacion = borrar la fila.
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(6)
+  ip         String?
+  userAgent  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ------------------------------------------------------------ organizacion
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model Organization {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt DateTime? @db.Timestamptz(6)
+
+  memberships Membership[]
+  projects    Project[]
+  labels      Label[]
+  invitations Invitation[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  userId String
+  orgId  String
+  role   OrgRole
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@id([userId, orgId])
+  // La PK compuesta no sirve para listar los miembros de una org.
+  @@index([orgId])
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  orgId       String
+  email       String
+  role        OrgRole
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime @db.Timestamptz(6)
+  acceptedAt  DateTime? @db.Timestamptz(6)
+  revokedAt   DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  /// Invitacion directa a un tablero, como en Trello. Al aceptarla la
+  /// persona entra en la organizacion Y en ese proyecto de una vez, en vez
+  /// de entrar en la organizacion y quedarse esperando a que alguien la
+  /// anada al tablero.
+  projectId   String?
+  projectRole ProjectRole?
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project   Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invitedBy User         @relation("InvitationInviter", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([orgId, email])
+  @@index([projectId])
+  @@index([invitedById])
+}
+
+// ----------------------------------------------------------------- proyecto
+
+enum ProjectRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum ProjectVisibility {
+  /// Visible para toda la organizacion; ProjectMember actua como override.
+  ORG
+  /// Requiere fila ProjectMember explicita.
+  PRIVATE
+}
+
+model Project {
+  id           String            @id @default(cuid())
+  orgId        String
+  key          String
+  name         String
+  description  String?
+  visibility   ProjectVisibility @default(ORG)
+  /// Contador del numero legible (TF-42). Se incrementa atomicamente.
+  issueCounter Int               @default(0)
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt DateTime? @db.Timestamptz(6)
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  members ProjectMember[]
+  states  WorkflowState[]
+  columns BoardColumn[]
+  issues  Issue[]
+  events  ProjectEvent[]
+  invitations Invitation[]
+
+  @@unique([orgId, key])
+  // Destino de la FK compuesta de Issue: ancla el tenant en la base de datos.
+  @@unique([id, orgId])
+  @@index([orgId, archivedAt])
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  role      ProjectRole
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
+}
+
+// ------------------------------------------------------------- flujo/estado
+
+enum StateCategory {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+/// Estado autoritativo de un issue. Separado de la columna del tablero para
+/// que "esta terminado?" no signifique "esta en la columna mas a la derecha".
+model WorkflowState {
+  id        String        @id @default(cuid())
+  projectId String
+  name      String
+  category  StateCategory
+  position  Int
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column  BoardColumn?
+  issues  Issue[]
+
+  @@unique([projectId, name])
+  // Ancla de ambito: destino de las FK compuestas de BoardColumn e Issue.
+  @@unique([id, projectId])
+  @@index([projectId, position])
+}
+
+/// Colocacion visual en el tablero. 1:1 con WorkflowState en el MVP.
+model BoardColumn {
+  id        String @id @default(cuid())
+  projectId String
+  stateId   String
+  name      String
+  position  Int
+  wipLimit  Int?
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // FK compuesta: una columna cableada al estado de otro proyecto es
+  // inexpresable, no solo improbable.
+  state   WorkflowState @relation(fields: [stateId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  issues Issue[]
+
+  @@unique([projectId, name])
+  @@unique([id, projectId])
+  @@unique([stateId, projectId])
+  @@index([projectId, position])
+}
+
+// -------------------------------------------------------------------- issue
+
+enum IssueType {
+  EPIC
+  STORY
+  TASK
+  BUG
+}
+
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Issue {
+  id    String @id @default(cuid())
+  /// Desnormalizado para la FK compuesta; nunca se acepta del cliente.
+  orgId String
+
+  projectId   String
+  number      Int
+  title       String
+  description String?
+  type        IssueType     @default(TASK)
+  priority    IssuePriority @default(MEDIUM)
+
+  stateId  String
+  /// NULL = en el backlog, fuera del tablero.
+  columnId String?
+  /// Fractional index. Ordenar siempre por (position, id).
+  position String
+
+  reporterId  String
+  assigneeId  String?
+  parentId    String?
+  storyPoints Int?
+  dueDate     DateTime? @db.Timestamptz(6)
+
+  /// Concurrencia optimista. Un update sin version coincidente no escribe.
+  version Int @default(0)
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
+  archivedAt DateTime? @db.Timestamptz(6)
+
+  project  Project       @relation(fields: [projectId, orgId], references: [id, orgId], onDelete: Cascade)
+  // Las tres FK siguientes son COMPUESTAS con projectId: un issue con el
+  // estado, la columna o el padre de otro proyecto es inexpresable en la base
+  // de datos, no solo improbable porque el servicio lo compruebe.
+  //
+  // NoAction, no Restrict: con Restrict, borrar un proyecto con issues falla
+  // porque el trigger de integridad se dispara ANTES del cascade que habria
+  // borrado esos issues. NoAction aplaza la comprobacion al final de la
+  // sentencia, asi que el cascade llega a tiempo.
+  state    WorkflowState @relation(fields: [stateId, projectId], references: [id, projectId], onDelete: NoAction)
+  column   BoardColumn?  @relation(fields: [columnId, projectId], references: [id, projectId], onDelete: NoAction)
+  reporter User          @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  assignee User?         @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  parent   Issue?        @relation("IssueHierarchy", fields: [parentId, projectId], references: [id, projectId], onDelete: NoAction)
+  children Issue[]       @relation("IssueHierarchy")
+
+  labels   IssueLabel[]
+  comments Comment[]
+
+  @@index([reporterId])
+  @@index([stateId])
+  @@unique([projectId, number])
+  // Destino de la FK compuesta de Comment.
+  @@unique([id, orgId])
+  // Destino de las FK compuestas de parent y de IssueLabel.
+  @@unique([id, projectId])
+  // Sirve a nextPositionInColumn, NO a la lectura del tablero: esa va por el
+  // indice parcial Issue_column_board_idx, que empieza por columnId porque la
+  // consulta que emite Prisma para una relacion anidada no lleva projectId.
+  @@index([projectId, columnId, position])
+  @@index([projectId, stateId, updatedAt(sort: Desc)])
+  @@index([assigneeId, archivedAt])
+  @@index([parentId])
+}
+
+model Label {
+  id    String @id @default(cuid())
+  /// A nivel de organizacion: "bug" no debe existir 12 veces con 12 colores.
+  orgId String
+  name  String
+  color String
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  issues IssueLabel[]
+
+  @@unique([orgId, name])
+  // Ancla de ambito: destino de la FK compuesta de IssueLabel.
+  @@unique([id, orgId])
+}
+
+model IssueLabel {
+  issueId String
+  labelId String
+  orgId   String
+
+  issue Issue @relation(fields: [issueId, orgId], references: [id, orgId], onDelete: Cascade)
+  label Label @relation(fields: [labelId, orgId], references: [id, orgId], onDelete: Cascade)
+
+  @@id([issueId, labelId])
+  @@index([labelId])
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  orgId   String
+  issueId String
+
+  authorId String
+  body     String
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  editedAt  DateTime? @db.Timestamptz(6)
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  issue  Issue @relation(fields: [issueId, orgId], references: [id, orgId], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([issueId, createdAt])
+  @@index([authorId])
+}
+
+// ----------------------------------------------------------------- auditoria
+
+enum AuditEntity {
+  ORGANIZATION
+  MEMBERSHIP
+  INVITATION
+  PROJECT
+  BOARD_COLUMN
+  WORKFLOW_STATE
+  ISSUE
+  COMMENT
+  LABEL
+  USER
+  SESSION
+}
+
+/// Append-only. Los campos de texto son instantaneas: la entidad referenciada
+/// suele no existir cuando alguien lee el registro.
+model AuditLog {
+  id          String      @id @default(cuid())
+  orgId       String?
+  actorId     String?
+  actorEmail  String
+  action      String
+  entityType  AuditEntity
+  entityId    String
+  entityLabel String?
+  diff        Json?
+  ip          String?
+  userAgent   String?
+  requestId   String?
+  createdAt   DateTime    @default(now()) @db.Timestamptz(6)
+
+  org Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  // SetNull: borrar un usuario no debe borrar su historial.
+  actor User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt(sort: Desc)])
+  @@index([actorId])
+}
+
+// ------------------------------------------------------------- tiempo real
+
+/// Log de eventos por proyecto. El SSE emite `id: seq` y el navegador reenvia
+/// `Last-Event-ID` al reconectar, asi que la reconexion reproduce lo perdido
+/// en vez de dejar el tablero desincronizado en silencio.
+model ProjectEvent {
+  seq       BigInt   @id @default(autoincrement())
+  projectId String
+  type      String
+  entityId  String
+  /// Parche minimo, no la entidad completa.
+  payload   Json
+  actorId   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, seq])
+  @@index([createdAt])
+}

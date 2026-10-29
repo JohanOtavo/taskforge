@@ -1,0 +1,56 @@
+# Pila completa en una sola maquina: aplicacion + Postgres.
+#
+# Para la opcion de VPS gratuito (Oracle Cloud Always Free y similares), donde
+# no hay servicios gestionados y la base corre al lado. Ahi SI conviene el
+# Postgres propio: no hay pooler en medio, asi que LISTEN/NOTIFY y el tiempo
+# real funcionan sin configuracion extra.
+#
+#   printf 'POSTGRES_PASSWORD=%s\nAPP_URL=https://tu-dominio\n' "$(openssl rand -base64 24)" > .env.prod
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml exec app npx prisma migrate deploy
+#
+# Falta por hacer tu: un proxy delante (Caddy o nginx) que termine TLS. Sin
+# HTTPS la cookie de sesion viaja en claro y `Secure` la bloquea en produccion.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD}
+      POSTGRES_DB: taskforge
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Sin puertos publicados: solo la red interna de compose la alcanza.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Misma URL en las dos: Postgres directo, sin pooler.
+      DATABASE_URL: postgresql://taskforge:${POSTGRES_PASSWORD}@db:5432/taskforge?schema=public
+      DATABASE_URL_DIRECT: postgresql://taskforge:${POSTGRES_PASSWORD}@db:5432/taskforge?schema=public
+      APP_URL: ${APP_URL:?define APP_URL}
+      UV_THREADPOOL_SIZE: 8
+    # Solo localhost: el proxy con TLS es quien se expone a internet.
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  pgdata:

@@ -1,0 +1,45 @@
+# Blueprint de Render: crea el servicio web desde este repositorio.
+#
+# La base de datos NO se declara aqui a proposito. El Postgres gratuito de
+# Render caduca 30 dias despues de crearlo y luego queda inaccesible, asi que
+# la base va en Neon o Supabase (ver docs/DEPLOY.md) y sus URL se pegan en el
+# panel.
+#
+# Las variables con `sync: false` no se versionan: Render las pide al crear el
+# blueprint y quedan guardadas en su panel, nunca en el repositorio.
+services:
+  - type: web
+    name: taskforge
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    # Comprueba la base de datos, no solo que el proceso responda.
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      # Pooled; la usa Prisma.
+      - key: DATABASE_URL
+        sync: false
+      # Modo sesion (puerto 5432, sin pooler transaccional). Sin esto el
+      # tiempo real deja de funcionar EN SILENCIO.
+      - key: DATABASE_URL_DIRECT
+        sync: false
+      # Dominio publico real: alimenta serverActions.allowedOrigins y los
+      # enlaces de invitacion. Con el valor equivocado, los formularios
+      # devuelven 403.
+      - key: APP_URL
+        sync: false
+      # La instancia gratuita tiene 512 MiB. Al coste de OWASP (N=2^17,
+      # ~128 MiB por hash) dos logins simultaneos la matan: 2^16 y un solo
+      # hash a la vez dejan el pico en ~64 MiB. Al pasar a una instancia
+      # mayor, borra estas dos variables.
+      - key: SCRYPT_N
+        value: 65536
+      - key: PASSWORD_HASH_CONCURRENCY
+        value: 1
+      - key: UV_THREADPOOL_SIZE
+        value: 8

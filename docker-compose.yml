@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: taskforge-db
+    environment:
+      POSTGRES_USER: taskforge
+      POSTGRES_PASSWORD: taskforge
+      POSTGRES_DB: taskforge
+    ports:
+      # 5432 del host suele estar ocupado por una instalacion nativa de
+      # Postgres; mapear a 55432 evita el conflicto silencioso.
+      - "55432:5432"
+    volumes:
+      - taskforge-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Base de datos efimera para los tests de integracion. Puerto distinto para
+  # que `npm test` no destruya los datos de desarrollo.
+  db-test:
+    image: postgres:16-alpine
+    container_name: taskforge-db-test
+    environment:
+      POSTGRES_USER: taskforge
+      POSTGRES_PASSWORD: taskforge
+      POSTGRES_DB: taskforge_test
+    ports:
+      - "55433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      target: runner
+    profiles: ["full"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://taskforge:taskforge@db:5432/taskforge?schema=public
+      DATABASE_URL_DIRECT: postgresql://taskforge:taskforge@db:5432/taskforge?schema=public
+      APP_URL: http://localhost:3000
+      UV_THREADPOOL_SIZE: "8"
+    ports:
+      - "3000:3000"
+
+volumes:
+  taskforge-db:
