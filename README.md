@@ -121,3 +121,8 @@ Una regla de ESLint impide que `src/server/**` importe de `app/` o de `component
 
 211 pruebas en verde con cobertura por encima del 80 % en la lógica de negocio. Lo que queda fuera del MVP está en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), sección 13.
+
+## Licencia
+
+[MIT](LICENSE). Úsalo, modifícalo y redistribúyelo; solo conserva el aviso de
+copyright. Se entrega sin garantía.
