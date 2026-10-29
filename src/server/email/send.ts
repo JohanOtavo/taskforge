@@ -21,11 +21,45 @@ export type SendOutcome = "sent" | "not-configured" | "failed";
 /// conexiones SMTP abiertas.
 const globalForMailer = globalThis as unknown as { mailer?: Transporter | null };
 
+/// Tiempos limite. SIN ellos, un servidor SMTP que no contesta deja colgada
+/// la Server Action: quien invita se queda con el boton girando para siempre,
+/// porque el correo se envia dentro de la peticion. Con esto, lo peor que
+/// pasa es que a los ~8 segundos se da por fallido y la interfaz muestra el
+/// enlace para pasarlo a mano.
+const CONNECTION_TIMEOUT_MS = 8_000;
+const GREETING_TIMEOUT_MS = 8_000;
+const SOCKET_TIMEOUT_MS = 12_000;
+
+/// `createTransport` con una cadena no admite opciones, asi que la URL se
+/// desmonta a mano para poder anadir los tiempos limite.
+function buildTransport(url: string): Transporter {
+  const parsed = new URL(url);
+  const port = Number(parsed.port) || (parsed.protocol === "smtps:" ? 465 : 587);
+
+  return createTransport({
+    host: parsed.hostname,
+    port,
+    // 465 es TLS desde el primer byte; 587 empieza en claro y sube a TLS con
+    // STARTTLS, que aqui se exige en vez de dejarlo a criterio del servidor.
+    secure: port === 465,
+    requireTLS: port !== 465,
+    auth: parsed.username
+      ? {
+          user: decodeURIComponent(parsed.username),
+          pass: decodeURIComponent(parsed.password),
+        }
+      : undefined,
+    connectionTimeout: CONNECTION_TIMEOUT_MS,
+    greetingTimeout: GREETING_TIMEOUT_MS,
+    socketTimeout: SOCKET_TIMEOUT_MS,
+  });
+}
+
 function getTransport(): Transporter | null {
   if (globalForMailer.mailer !== undefined) return globalForMailer.mailer;
 
   const url = process.env.SMTP_URL;
-  globalForMailer.mailer = url ? createTransport(url) : null;
+  globalForMailer.mailer = url ? buildTransport(url) : null;
   return globalForMailer.mailer;
 }
 
