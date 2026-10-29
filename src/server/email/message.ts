@@ -63,41 +63,32 @@ export function buildInvitationEmail(input: InvitationEmailInput): InvitationEma
     "Si no esperabas esta invitacion, ignora este correo: sin abrir el enlace no se crea nada.",
   ].join("\n");
 
-  // Tabla y estilos en linea: los clientes de correo ignoran hojas externas y
-  // buena parte de flexbox. No es descuido, es lo unico que se ve igual en
-  // Gmail, Outlook y Apple Mail.
+  // Deliberadamente SOBRIO, y es una decision de entregabilidad, no de gusto.
+  //
+  // La version anterior (fondo oscuro, tabla maquetada, boton grande de
+  // color) acababa en la pestana Promociones de Gmail: son exactamente las
+  // senales por las que clasifica como publicidad. Un correo de invitacion
+  // es transaccional, asi que se parece a lo que es: texto, un enlace y poco
+  // mas. Sin imagenes, sin colores de marca, sin tabla de maquetacion.
   const html = `<!doctype html>
 <html lang="es">
-  <body style="margin:0;padding:24px;background:#0f172a;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#e2e8f0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#1e293b;border-radius:12px;padding:32px;">
-      <tr>
-        <td>
-          <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:#f8fafc;">
-            ${escapeHtml(input.inviterName)} te ha invitado a ${escapeHtml(destino)}
-          </p>
-          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#cbd5e1;">
-            TaskForge es un tablero de trabajo al estilo kanban. Acepta la invitacion
-            para entrar al equipo.
-          </p>
-          <p style="margin:0 0 24px;">
-            <a href="${escapeHtml(input.url)}"
-               style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
-              Aceptar invitacion
-            </a>
-          </p>
-          <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">
-            Si el boton no funciona, copia este enlace:
-          </p>
-          <p style="margin:0 0 24px;font-size:13px;word-break:break-all;color:#a5b4fc;">
-            ${escapeHtml(input.url)}
-          </p>
-          <p style="margin:0;font-size:13px;line-height:1.6;color:#94a3b8;">
-            Caduca el ${escapeHtml(caduca)} y solo sirve una vez. Solo puede aceptarla
-            esta direccion de correo. Si no esperabas la invitacion, ignora el mensaje.
-          </p>
-        </td>
-      </tr>
-    </table>
+  <body style="font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.6;color:#202124;">
+    <p>Hola,</p>
+    <p>
+      ${escapeHtml(input.inviterName)} te ha invitado a ${escapeHtml(destino)} en TaskForge.
+    </p>
+    <p>
+      Para aceptar la invitacion, abre este enlace:<br>
+      <a href="${escapeHtml(input.url)}">${escapeHtml(input.url)}</a>
+    </p>
+    <p>
+      El enlace caduca el ${escapeHtml(caduca)} y solo sirve una vez. Unicamente
+      puede aceptarlo esta direccion de correo.
+    </p>
+    <p>
+      Si no esperabas esta invitacion, ignora el mensaje: sin abrir el enlace no
+      se crea nada.
+    </p>
   </body>
 </html>`;
 
