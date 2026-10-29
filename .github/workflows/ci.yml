@@ -9,6 +9,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# En un repositorio publico cualquiera puede abrir un PR y ejecutar este
+# workflow. Solo necesita leer el codigo: sin esto hereda los permisos por
+# defecto del repositorio, que pueden incluir escritura.
+permissions:
+  contents: read
+
 env:
   # Misma base para migraciones y para los tests: en CI no hay pooler.
   DATABASE_URL: postgresql://taskforge:taskforge@localhost:5432/taskforge_test?schema=public
