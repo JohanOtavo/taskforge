@@ -116,6 +116,15 @@ tiene cuenta **el enlace le llega por correo** y deja de mostrarse en pantalla
 canal—. Sin esas dos variables no cambia nada respecto a antes: la interfaz
 enseña el enlace para pasarlo a mano.
 
+> **En Render no uses SMTP.** El plan gratuito bloquea el puerto saliente: la
+> conexión a `smtp-relay.brevo.com:587` expira sin llegar a abrirse
+> (`ETIMEDOUT` en `command: 'CONN'`). Es una medida antispam habitual en
+> hosting compartido, y no se nota en desarrollo porque desde tu máquina sí
+> funciona. Ahí hay que enviar por **HTTPS**: define `BREVO_API_KEY` con una
+> clave API v3 de Brevo y la aplicación usa `api.brevo.com` por el puerto 443,
+> que nunca se bloquea. `SMTP_URL` queda para servidores propios y para
+> desarrollo; si están las dos, manda la API.
+
 Vale cualquier SMTP. Dos caminos gratuitos:
 
 | | Gmail | Brevo |

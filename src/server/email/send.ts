@@ -67,13 +67,74 @@ export type SendInvitationInput = InvitationEmailInput & {
   to: string;
 };
 
+/// `EMAIL_FROM` viene como "TaskForge <no-reply@dominio>" o como una
+/// direccion suelta. La API de Brevo quiere nombre y direccion por separado.
+function parseFrom(value: string): { name: string; email: string } {
+  const match = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(value);
+  if (!match) return { name: "TaskForge", email: value.trim() };
+  return { name: match[1] || "TaskForge", email: match[2] };
+}
+
+const HTTP_TIMEOUT_MS = 10_000;
+
+/// Envio por HTTPS en vez de SMTP.
+///
+/// Render bloquea el SMTP saliente en el plan gratuito: la conexion al puerto
+/// 587 expira sin llegar a abrirse (ETIMEDOUT en CONN). Lo mismo pasa en
+/// varios proveedores de hosting, que cierran esos puertos contra el envio de
+/// spam. El 443 no se bloquea nunca, asi que esta es la via fiable en la
+/// nube; SMTP se queda para servidores propios y para desarrollo.
+async function sendViaBrevoApi(
+  apiKey: string,
+  from: string,
+  to: string,
+  email: { subject: string; text: string; html: string },
+): Promise<SendOutcome> {
+  const sender = parseFrom(from);
+
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to }],
+        subject: email.subject,
+        textContent: email.text,
+        htmlContent: email.html,
+      }),
+      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+    });
+
+    if (response.ok) return "sent";
+
+    // El cuerpo del error dice el motivo real (remitente sin verificar,
+    // cuota agotada, clave invalida). Sin registrarlo, el fallo seria otra
+    // vez invisible.
+    console.error("[email] Brevo respondio", response.status, await response.text());
+    return "failed";
+  } catch (error) {
+    console.error("[email] fallo al llamar a la API de Brevo", error);
+    return "failed";
+  }
+}
+
 export async function sendInvitationEmail(input: SendInvitationInput): Promise<SendOutcome> {
-  const transport = getTransport();
   const from = process.env.EMAIL_FROM;
-  if (!transport || !from) return "not-configured";
+  if (!from) return "not-configured";
 
   const { to, ...rest } = input;
   const email = buildInvitationEmail(rest);
+
+  const apiKey = process.env.BREVO_API_KEY;
+  if (apiKey) return sendViaBrevoApi(apiKey, from, to, email);
+
+  const transport = getTransport();
+  if (!transport) return "not-configured";
 
   try {
     await transport.sendMail({
