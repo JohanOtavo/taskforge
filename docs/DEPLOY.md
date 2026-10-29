@@ -110,6 +110,34 @@ en `DATABASE_URL_DIRECT` (paso 1).
 
 ### Invitaciones por correo
 
+**Vía recomendada sin dominio propio: API de Gmail.** Con
+`GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` y `GMAIL_REFRESH_TOKEN` puestas, el
+correo sale de verdad desde tu cuenta de Gmail, firmado por Google, y entra en
+la bandeja principal. Los proveedores transaccionales (Brevo, Resend…) no
+pueden firmar en nombre de `gmail.com`: reescriben el remitente a un dominio
+suyo y Gmail lo manda a Promociones. Va por HTTPS, así que el bloqueo SMTP de
+Render no le afecta. Límite: ~500 destinatarios al día. Si están las tres, tiene
+prioridad sobre Brevo y SMTP.
+
+Configuración, una sola vez:
+
+1. Google Cloud → proyecto nuevo → habilita **Gmail API**. Exige verificación
+   en dos pasos en la cuenta.
+2. *Google Auth Platform* → audiencia **External**, página principal y
+   **política de privacidad pública** (la app la sirve en `/privacy`).
+3. **Publica la app en producción.** Sin esto, Google caduca el refresh token a
+   los 7 días y las invitaciones dejan de salir solas cada semana. No hace
+   falta pasar la verificación de Google: con menos de 100 usuarios basta con
+   aceptar el aviso de "app no verificada".
+4. Credencial OAuth de tipo **Aplicación de escritorio**.
+5. `npm run gmail:auth` con `GMAIL_CLIENT_ID` y `GMAIL_CLIENT_SECRET` en el
+   entorno, y aceptar en el navegador. Imprime el refresh token. Solo pide el
+   permiso `gmail.send`: la app puede enviar, no leer.
+
+Si las invitaciones dejan de salir y el log dice `invalid_grant`, el token se
+revocó (cambio de contraseña de Google, o retirada del acceso en *Cuenta de
+Google → Seguridad → Apps de terceros*): repite el paso 5.
+
 Con `SMTP_URL` y `EMAIL_FROM` puestas, al invitar a alguien que todavía no
 tiene cuenta **el enlace le llega por correo** y deja de mostrarse en pantalla
 —es un token de acceso, y no conviene tenerlo a la vista si ya viajó por su
