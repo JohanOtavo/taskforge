@@ -61,7 +61,17 @@ export async function listMyOrganizations(db: DbClient, actor: Actor) {
 /// OWNER de la organizacion, asi que no es enumeracion anonima.
 export type InviteOutcome =
   | { kind: "added"; userId: string; name: string; email: string }
-  | { kind: "invited"; invitationId: string; token: string; expiresAt: Date };
+  | {
+      kind: "invited";
+      invitationId: string;
+      token: string;
+      expiresAt: Date;
+      /// Nombres para redactar el correo de invitacion. Los devuelve el
+      /// servicio, que ya los tiene a mano, en vez de consultarlos otra vez
+      /// desde la capa de arriba.
+      organizationName: string;
+      projectName: string | null;
+    };
 
 export async function inviteMember(
   db: DbClient,
@@ -75,7 +85,7 @@ export async function inviteMember(
   const project = input.projectId
     ? await db.project.findFirst({
         where: { id: input.projectId, orgId: input.orgId, archivedAt: null },
-        select: { id: true, key: true },
+        select: { id: true, key: true, name: true },
       })
     : null;
   if (input.projectId) {
@@ -166,13 +176,21 @@ async function createPendingInvite(
   db: DbClient,
   actor: Actor,
   args: Omit<InviteMemberInput, "projectId" | "projectRole"> & {
-    project: { id: string; key: string } | null;
+    project: { id: string; key: string; name: string } | null;
     projectRole: ProjectRole | null;
   },
 ): Promise<InviteOutcome> {
   const token = newToken();
 
   const invitation = await db.$transaction(async (tx) => {
+    // El nombre de la organizacion es para el correo de invitacion. Se lee
+    // dentro de la transaccion para que no pueda ser el de una organizacion
+    // renombrada entre la comprobacion de permisos y el envio.
+    const org = await tx.organization.findUniqueOrThrow({
+      where: { id: args.orgId },
+      select: { name: true },
+    });
+
     // Una invitacion pendiente previa se revoca: dos tokens vivos para el
     // mismo correo son dos caminos de entrada que auditar por separado.
     await tx.invitation.updateMany({
@@ -205,7 +223,7 @@ async function createPendingInvite(
       diff: { role: args.role, project: args.project?.key ?? null, projectRole: args.projectRole },
     });
 
-    return created;
+    return { ...created, organizationName: org.name };
   });
 
   return {
@@ -213,6 +231,8 @@ async function createPendingInvite(
     invitationId: invitation.id,
     token,
     expiresAt: invitation.expiresAt,
+    organizationName: invitation.organizationName,
+    projectName: args.project?.name ?? null,
   };
 }
 

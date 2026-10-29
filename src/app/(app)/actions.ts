@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireCtx } from "@/server/context";
+import { getActor, requireCtx } from "@/server/context";
 import { setActiveWorkspace } from "@/server/current-org";
+import { sendInvitationEmail } from "@/server/email/send";
 import { toResult, type Result } from "@/server/errors";
 import { parseForm } from "@/server/form";
 import * as commentsService from "@/server/modules/comments/service";
@@ -204,7 +205,16 @@ export async function createLabelAction(formData: FormData): Promise<Result<{ id
 /// si no, se devuelve un enlace para que quien invita se lo pase.
 export type InviteActionData =
   | { kind: "added"; name: string; email: string }
-  | { kind: "invited"; url: string; email: string; expiresAt: string };
+  | {
+      kind: "invited";
+      url: string;
+      email: string;
+      expiresAt: string;
+      /// Si el correo salio. Cuando no hay SMTP configurado, o el envio falla,
+      /// la interfaz sigue mostrando el enlace para pasarlo a mano: la
+      /// invitacion es valida igualmente.
+      emailed: boolean;
+    };
 
 export async function inviteMemberAction(
   formData: FormData,
@@ -235,13 +245,29 @@ export async function inviteMemberAction(
     return invalid("Falta configurar APP_URL para poder generar enlaces de invitacion.");
   }
 
+  const url = `${origin}/invite/${result.data.token}`;
+
+  // `getActor` esta memoizado por peticion con `cache()`, asi que esto no
+  // supone otra consulta a la base.
+  const actor = await getActor();
+
+  const outcome = await sendInvitationEmail({
+    to: parsed.data.email,
+    inviterName: actor?.name ?? "Alguien",
+    organizationName: result.data.organizationName,
+    projectName: result.data.projectName,
+    url,
+    expiresAt: result.data.expiresAt,
+  });
+
   return {
     ok: true,
     data: {
       kind: "invited",
       email: parsed.data.email,
-      url: `${origin}/invite/${result.data.token}`,
+      url,
       expiresAt: result.data.expiresAt.toISOString(),
+      emailed: outcome === "sent",
     },
   };
 }

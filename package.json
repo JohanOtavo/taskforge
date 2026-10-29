@@ -21,7 +21,8 @@
     "test:all": "vitest run",
     "test:coverage": "vitest run --coverage",
     "verify": "npm run typecheck && npm run lint && npm run test",
-    "db:prune": "tsx --conditions react-server scripts/prune.ts"
+    "db:prune": "tsx --conditions react-server scripts/prune.ts",
+    "email:test": "tsx scripts/email-test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -34,6 +35,7 @@
     "fractional-indexing": "^4.0.0",
     "lucide-react": "^1.61.0",
     "next": "16.4.3",
+    "nodemailer": "^7.0.9",
     "pg": "^8.23.1",
     "prisma": "^6.19.3",
     "react": "19.3.0",
@@ -46,6 +48,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^22",
+    "@types/nodemailer": "^7.0.4",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

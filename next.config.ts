@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   // `cacheComponents` se deja desactivado a proposito: cada pagina depende de
   // la sesion y de datos por peticion, asi que no hay nada que precachear.
   // El cliente de Prisma no debe empaquetarse: carga binarios nativos.
-  serverExternalPackages: ["@prisma/client", "pg"],
+  serverExternalPackages: ["@prisma/client", "pg", "nodemailer"],
   experimental: {
     // Detras de un proxy/dominio propio la comprobacion de Origin de las
     // Server Actions rechaza peticiones legitimas si no se declara el origen.

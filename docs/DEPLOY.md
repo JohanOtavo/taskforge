@@ -108,6 +108,46 @@ en `DATABASE_URL_DIRECT` (paso 1).
   invita copia el enlace y lo manda por su cuenta. Si la dirección ya tiene
   cuenta, entra en el acto y no hace falta enlace.
 
+### Invitaciones por correo
+
+Con `SMTP_URL` y `EMAIL_FROM` puestas, al invitar a alguien que todavía no
+tiene cuenta **el enlace le llega por correo** y deja de mostrarse en pantalla
+—es un token de acceso, y no conviene tenerlo a la vista si ya viajó por su
+canal—. Sin esas dos variables no cambia nada respecto a antes: la interfaz
+enseña el enlace para pasarlo a mano.
+
+Vale cualquier SMTP. Dos caminos gratuitos:
+
+| | Gmail | Brevo |
+|---|---|---|
+| Cuenta nueva | no, usas la tuya | sí |
+| Límite | ~500 correos/día | 300/día |
+| Remitente | tu propia dirección | cualquiera verificada |
+| Riesgo | si filtras la clave, es tu buzón | aislado de tu correo personal |
+
+Con **Gmail**: activa la verificación en dos pasos, crea una *contraseña de
+aplicación* en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+y usa:
+
+```
+SMTP_URL=smtps://tu-correo@gmail.com:LA_CLAVE_DE_APP@smtp.gmail.com:465
+EMAIL_FROM=TaskForge <tu-correo@gmail.com>
+```
+
+Compruébalo **antes** de confiarle las invitaciones reales:
+
+```bash
+npm run email:test -- tu-correo@ejemplo.com
+```
+
+Ese comando verifica credenciales y conexión y luego manda un correo de
+ejemplo. Sin `SMTP_URL` usa un buzón temporal de Ethereal y devuelve una URL
+para ver cómo queda el mensaje, sin enviar nada a nadie.
+
+Si el envío falla en producción, **la invitación no se pierde**: ya está en la
+base de datos, el error queda en el log y la interfaz vuelve a mostrar el
+enlace.
+
 ### Mantenerla despierta (descanso de 02:00 a 06:00)
 
 El repositorio trae `.github/workflows/keep-awake.yml`: hace `GET /api/ping`

@@ -72,8 +72,14 @@ export function ProjectMembers({ projectId, orgId, members, candidates, canManag
       if (result.data.kind === "added") {
         setNotice(`${result.data.name} ya tenia cuenta y se ha anadido al tablero.`);
       } else {
-        setInviteUrl(result.data.url);
-        setNotice(`Invitacion creada para ${result.data.email}. Pasale este enlace:`);
+        // Con el correo enviado, el enlace deja de mostrarse: ensenarlo
+        // invitaria a reenviarlo por otro canal, y es un token de acceso.
+        setInviteUrl(result.data.emailed ? null : result.data.url);
+        setNotice(
+          result.data.emailed
+            ? `Invitacion enviada por correo a ${result.data.email}.`
+            : `Invitacion creada para ${result.data.email}. Pasale este enlace:`,
+        );
       }
       router.refresh();
     });

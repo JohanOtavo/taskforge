@@ -76,13 +76,19 @@ export function MembersAdmin({
         return;
       }
       // Estilo Trello: quien ya tiene cuenta entra en el acto; quien no,
-      // recibe un enlace. El MVP no envia correo, asi que no hace falta un
-      // patron outbox ni se arriesgan correos fantasma.
+      // recibe un enlace. Con SMTP configurado el enlace va por correo; sin
+      // el, se muestra en pantalla para pasarlo a mano.
       if (result.data.kind === "added") {
         setNotice(`${result.data.name} ya tenia cuenta y se ha anadido al equipo.`);
       } else {
-        setInviteUrl(result.data.url);
-        setNotice(`Invitacion creada para ${result.data.email}.`);
+        // El enlace es un token de acceso: si ya viajo por correo, no se
+        // vuelve a ensenar en pantalla.
+        setInviteUrl(result.data.emailed ? null : result.data.url);
+        setNotice(
+          result.data.emailed
+            ? `Invitacion enviada por correo a ${result.data.email}.`
+            : `Invitacion creada para ${result.data.email}. Pasale este enlace:`,
+        );
       }
       router.refresh();
     });
