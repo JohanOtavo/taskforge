@@ -72,12 +72,13 @@ export function ProjectMembers({ projectId, orgId, members, candidates, canManag
       if (result.data.kind === "added") {
         setNotice(`${result.data.name} ya tenia cuenta y se ha anadido al tablero.`);
       } else {
-        // Con el correo enviado, el enlace deja de mostrarse: ensenarlo
-        // invitaria a reenviarlo por otro canal, y es un token de acceso.
-        setInviteUrl(result.data.emailed ? null : result.data.url);
+        // El enlace se muestra SIEMPRE, tambien cuando el correo salio: que el
+        // proveedor acepte el envio no garantiza que llegue al buzon (Gmail
+        // retiene a veces sin rebote), y quien invita necesita un plan B.
+        setInviteUrl(result.data.url);
         setNotice(
           result.data.emailed
-            ? `Invitacion enviada por correo a ${result.data.email}.`
+            ? `Invitacion enviada por correo a ${result.data.email}. Si no le llega, pasale este enlace:`
             : `Invitacion creada para ${result.data.email}. Pasale este enlace:`,
         );
       }
