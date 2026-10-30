@@ -22,8 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "verify": "npm run typecheck && npm run lint && npm run test",
     "db:prune": "tsx --conditions react-server scripts/prune.ts",
-    "email:test": "tsx scripts/email-test.ts",
-    "gmail:auth": "tsx scripts/gmail-auth.ts"
+    "email:test": "tsx scripts/email-test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

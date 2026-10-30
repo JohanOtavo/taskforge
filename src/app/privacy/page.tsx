@@ -5,14 +5,13 @@ export const metadata: Metadata = {
   title: "Privacidad · TaskForge",
 };
 
-/// Politica de privacidad. Publica (ver PUBLIC_PATHS en el middleware) porque
-/// Google exige un enlace accesible sin cuenta para publicar la app OAuth que
-/// envia las invitaciones por Gmail.
+/// Politica de privacidad. Publica (ver PUBLIC_PATHS en el middleware): tiene
+/// que poder leerse sin cuenta.
 ///
 /// Describe lo que el codigo HACE, no una plantilla generica: si cambia lo que
 /// se guarda (por ejemplo, la IP de las sesiones), hay que cambiar esto.
 const CONTACT_EMAIL = "johanotavo2002@gmail.com";
-const UPDATED_AT = "29 de octubre de 2026";
+const UPDATED_AT = "30 de octubre de 2026";
 
 export default function PrivacyPage() {
   return (
@@ -56,10 +55,10 @@ export default function PrivacyPage() {
       <section className="space-y-2">
         <h2 className="text-base font-semibold">Correo electrónico</h2>
         <p>
-          Las invitaciones se envían a través de la API de Gmail. La aplicación tiene únicamente
-          el permiso de <strong>enviar</strong> correo: no puede leer, borrar ni buscar en ningún
-          buzón. Solo se escribe a la dirección que alguien ha invitado, y solo para entregarle
-          su enlace de invitación.
+          Las invitaciones se envían a través de Brevo, un servicio de envío de correo. Brevo
+          recibe la dirección invitada y el texto de la invitación, y registra si el correo se
+          entregó y se abrió. Solo se escribe a la dirección que alguien ha invitado, y solo
+          para entregarle su enlace de invitación.
         </p>
       </section>
 
@@ -67,7 +66,8 @@ export default function PrivacyPage() {
         <h2 className="text-base font-semibold">Dónde se alojan</h2>
         <p>
           La aplicación corre en Render y la base de datos en Neon, ambos en Estados Unidos
-          (región de Oregón). La conexión con la base de datos va cifrada.
+          (región de Oregón). La conexión con la base de datos va cifrada. El correo lo envía
+          Brevo, con sede en la Unión Europea.
         </p>
       </section>
 

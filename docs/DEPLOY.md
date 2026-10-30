@@ -104,45 +104,34 @@ en `DATABASE_URL_DIRECT` (paso 1).
 - **Al dormirse se corta el SSE.** El cliente reconecta solo y recupera los
   eventos perdidos por su cursor, así que no se pierde nada; solo se ve el
   indicador en "Conectando…" un momento.
-- **Las invitaciones no llegan por correo.** El MVP no envía correo: quien
-  invita copia el enlace y lo manda por su cuenta. Si la dirección ya tiene
-  cuenta, entra en el acto y no hace falta enlace.
+- **Las invitaciones por correo suelen caer en Promociones** (ver abajo). El
+  enlace también sale en pantalla para pasarlo por otro canal. Si la dirección
+  ya tiene cuenta, entra en el acto y no hace falta enlace.
 
 ### Invitaciones por correo
 
-**Vía recomendada sin dominio propio: API de Gmail.** Con
-`GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` y `GMAIL_REFRESH_TOKEN` puestas, el
-correo sale de verdad desde tu cuenta de Gmail, firmado por Google, y entra en
-la bandeja principal. Los proveedores transaccionales (Brevo, Resend…) no
-pueden firmar en nombre de `gmail.com`: reescriben el remitente a un dominio
-suyo y Gmail lo manda a Promociones. Va por HTTPS, así que el bloqueo SMTP de
-Render no le afecta. Límite: ~500 destinatarios al día. Si están las tres, tiene
-prioridad sobre Brevo y SMTP.
+En Render, la vía es **Brevo por HTTPS**: `BREVO_API_KEY` (clave API v3,
+`xkeysib-…`; la clave SMTP `xsmtpsib-…` da 401) y `EMAIL_FROM` con un remitente
+verificado en Brevo.
 
-Configuración, una sola vez:
+Al invitar a alguien que todavía no tiene cuenta, el enlace sale por correo
+**y además se muestra en pantalla**: que el proveedor acepte el envío no
+garantiza que llegue al buzón, y quien invita necesita un plan B. Sin
+`EMAIL_FROM` y un proveedor configurado, solo se muestra el enlace.
 
-1. Google Cloud → proyecto nuevo → habilita **Gmail API**. Exige verificación
-   en dos pasos en la cuenta.
-2. *Google Auth Platform* → audiencia **External**, página principal y
-   **política de privacidad pública** (la app la sirve en `/privacy`).
-3. **Publica la app en producción.** Sin esto, Google caduca el refresh token a
-   los 7 días y las invitaciones dejan de salir solas cada semana. No hace
-   falta pasar la verificación de Google: con menos de 100 usuarios basta con
-   aceptar el aviso de "app no verificada".
-4. Credencial OAuth de tipo **Aplicación de escritorio**.
-5. `npm run gmail:auth` con `GMAIL_CLIENT_ID` y `GMAIL_CLIENT_SECRET` en el
-   entorno, y aceptar en el navegador. Imprime el refresh token. Solo pide el
-   permiso `gmail.send`: la app puede enviar, no leer.
+**Por qué llega a Promociones.** Brevo no puede firmar en nombre de
+`gmail.com`: reescribe el remitente a `tu-correo@NNN.brevosend.com` y añade
+seguimiento de aperturas y clics, y Gmail lo trata como envío masivo. El único
+arreglo de verdad es un dominio propio autenticado en Brevo (SPF, DKIM, DMARC)
+como remitente. Mientras tanto, quien lo recibe puede moverlo a Principal y
+Gmail suele recordarlo para ese remitente.
 
-Si las invitaciones dejan de salir y el log dice `invalid_grant`, el token se
-revocó (cambio de contraseña de Google, o retirada del acceso en *Cuenta de
-Google → Seguridad → Apps de terceros*): repite el paso 5.
-
-Con `SMTP_URL` y `EMAIL_FROM` puestas, al invitar a alguien que todavía no
-tiene cuenta **el enlace le llega por correo** y deja de mostrarse en pantalla
-—es un token de acceso, y no conviene tenerlo a la vista si ya viajó por su
-canal—. Sin esas dos variables no cambia nada respecto a antes: la interfaz
-enseña el enlace para pasarlo a mano.
+**Descartado: API de Gmail.** Se probó (OAuth con `gmail.send`, app
+publicada en producción). Google aceptaba cada envío y lo dejaba en Enviados,
+pero a buzones de Gmail no llegaba nada, sin rebote: ni la invitación, ni la
+misma con un enlace a GitHub en vez de `onrender.com`, ni un "Hola" en texto
+plano. Fuera de Gmail sí llegaba (mail-tester 9,9/10). No merece la pena
+volver por ahí sin una pista nueva.
 
 > **En Render no uses SMTP.** El plan gratuito bloquea el puerto saliente: la
 > conexión a `smtp-relay.brevo.com:587` expira sin llegar a abrirse

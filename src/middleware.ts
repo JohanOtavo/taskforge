@@ -9,8 +9,8 @@ import { SESSION_COOKIE } from "@/server/session-cookie";
 /// falsificada pasa este filtro y falla despues en `requireCtx`, que es donde
 /// esta la autorizacion real. Nunca se debe anadir una comprobacion de
 /// permisos aqui y darla por buena.
-/// `/privacy` es publica por obligacion: Google exige que la politica de
-/// privacidad sea accesible sin cuenta para publicar la app OAuth de Gmail.
+/// `/privacy` es publica: la politica de privacidad tiene que poder leerse
+/// sin cuenta.
 const PUBLIC_PATHS = ["/login", "/register", "/invite", "/privacy"];
 
 export function middleware(request: NextRequest) {

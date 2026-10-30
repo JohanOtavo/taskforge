@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createTransport, type Transporter } from "nodemailer";
-import MailComposer from "nodemailer/lib/mail-composer";
 
 import { buildInvitationEmail, type InvitationEmailInput } from "./message";
 
@@ -124,87 +123,6 @@ async function sendViaBrevoApi(
   }
 }
 
-/// Envio por la API de Gmail, tambien por HTTPS.
-///
-/// Es la unica via que NO reescribe el remitente. Brevo, Resend o SendGrid no
-/// pueden firmar en nombre de gmail.com, asi que sustituyen la direccion por
-/// una suya (johanotavo2002@NNN.brevosend.com) y Gmail lo manda a
-/// Promociones. Aqui el correo sale de verdad desde la cuenta de Gmail, lo
-/// firma Google y llega autenticado. Limite: ~500 destinatarios al dia.
-///
-/// Las credenciales salen de `npm run gmail:auth`, que hace el baile OAuth
-/// una vez y devuelve un refresh token de larga duracion.
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
-
-type GmailConfig = { clientId: string; clientSecret: string; refreshToken: string };
-
-function readGmailConfig(): GmailConfig | null {
-  const clientId = process.env.GMAIL_CLIENT_ID;
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
-  if (!clientId || !clientSecret || !refreshToken) return null;
-  return { clientId, clientSecret, refreshToken };
-}
-
-// ponytail: pide un access token por envio. Las invitaciones son escasas;
-// si algun dia se envia en volumen, cachearlo ~55 min (dura 60).
-async function getGmailAccessToken(config: GmailConfig): Promise<string> {
-  const response = await fetch(GOOGLE_TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      refresh_token: config.refreshToken,
-      grant_type: "refresh_token",
-    }),
-    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
-  });
-  // Un 400 "invalid_grant" aqui significa refresh token revocado o caducado:
-  // hay que repetir `npm run gmail:auth`. Se registra el cuerpo para verlo.
-  if (!response.ok) throw new Error(`token ${response.status}: ${await response.text()}`);
-  const data = (await response.json()) as { access_token?: string };
-  if (!data.access_token) throw new Error("la respuesta de Google no trae access_token");
-  return data.access_token;
-}
-
-async function sendViaGmailApi(
-  config: GmailConfig,
-  from: string,
-  to: string,
-  email: { subject: string; text: string; html: string },
-): Promise<SendOutcome> {
-  try {
-    // La API de Gmail recibe el mensaje MIME completo. MailComposer ya viene
-    // con nodemailer y se ocupa de cabeceras, codificacion y multipart.
-    const raw = await new MailComposer({
-      from,
-      to,
-      subject: email.subject,
-      text: email.text,
-      html: email.html,
-    })
-      .compile()
-      .build();
-
-    const accessToken = await getGmailAccessToken(config);
-    const response = await fetch(GMAIL_SEND_URL, {
-      method: "POST",
-      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-      body: JSON.stringify({ raw: raw.toString("base64url") }),
-      signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
-    });
-
-    if (response.ok) return "sent";
-    console.error("[email] Gmail respondio", response.status, await response.text());
-    return "failed";
-  } catch (error) {
-    console.error("[email] fallo al enviar por la API de Gmail", error);
-    return "failed";
-  }
-}
-
 export async function sendInvitationEmail(input: SendInvitationInput): Promise<SendOutcome> {
   const from = process.env.EMAIL_FROM;
   if (!from) return "not-configured";
@@ -212,11 +130,9 @@ export async function sendInvitationEmail(input: SendInvitationInput): Promise<S
   const { to, ...rest } = input;
   const email = buildInvitationEmail(rest);
 
-  // Orden de preferencia: Gmail (remitente autenticado de verdad), Brevo por
-  // HTTPS, y SMTP solo para servidores propios o desarrollo.
-  const gmail = readGmailConfig();
-  if (gmail) return sendViaGmailApi(gmail, from, to, email);
-
+  // Brevo por HTTPS primero; SMTP solo para servidores propios o desarrollo.
+  // La API de Gmail se probo y se descarto: Google aceptaba el envio pero no
+  // lo entregaba a buzones de Gmail (ver docs/DEPLOY.md).
   const apiKey = process.env.BREVO_API_KEY;
   if (apiKey) return sendViaBrevoApi(apiKey, from, to, email);
 
