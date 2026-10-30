@@ -1,13 +1,14 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { safeNext } from "@/lib/safe-next";
 import { db } from "@/server/db";
 import { parseForm } from "@/server/form";
 import { toResult } from "@/server/errors";
-import { login, register, type RequestMeta } from "@/server/modules/auth/service";
+import { login, register } from "@/server/modules/auth/service";
 import { loginSchema, registerSchema } from "@/server/modules/auth/schema";
+import { requestMeta } from "@/server/request-meta";
 import { createSession, destroySession } from "@/server/session";
 import { setActiveWorkspace } from "@/server/current-org";
 
@@ -16,14 +17,11 @@ export type FormState = { error?: string; fieldErrors?: Record<string, string> }
 /// Una Server Action es un endpoint POST publico: ocultar el boton no
 /// autoriza nada. Toda accion valida su entrada y resuelve permisos por su
 /// cuenta.
-async function requestMeta(): Promise<RequestMeta> {
-  const list = await headers();
-  return {
-    // x-forwarded-for solo es fiable detras de un proxy de confianza. Se usa
-    // para limitar intentos, nunca para autorizar.
-    ip: list.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-    userAgent: list.get("user-agent"),
-  };
+
+/// A donde volver despues de entrar (por ejemplo, a una invitacion).
+function nextOf(formData: FormData): string {
+  const value = formData.get("next");
+  return safeNext(typeof value === "string" ? value : null);
 }
 
 function zodFieldErrors(error: unknown): Record<string, string> | undefined {
@@ -52,7 +50,7 @@ export async function registerAction(
 
   await createSession(result.data.userId, meta);
   if (result.data.orgId) await setActiveWorkspace(result.data.orgId);
-  redirect("/");
+  redirect(nextOf(formData));
 }
 
 export async function loginAction(_previous: FormState, formData: FormData): Promise<FormState> {
@@ -66,7 +64,7 @@ export async function loginAction(_previous: FormState, formData: FormData): Pro
   if (!result.ok) return { error: result.message };
 
   await createSession(result.data.userId, meta);
-  redirect("/");
+  redirect(nextOf(formData));
 }
 
 export async function logoutAction(): Promise<void> {

@@ -28,7 +28,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
           <Link href={`/login?next=/invite/${token}`} className="flex-1">
             <Button className="w-full">Entrar</Button>
           </Link>
-          <Link href="/register" className="flex-1">
+          <Link href={`/register?next=/invite/${token}`} className="flex-1">
             <Button variant="secondary" className="w-full">
               Crear cuenta
             </Button>

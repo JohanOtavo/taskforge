@@ -25,9 +25,13 @@ model User {
   id           String  @id @default(cuid())
   email        String  @unique
   name         String
-  // Nullable: un futuro alta por OAuth no tiene contrasena.
+  // Nullable: quien entra con Google no tiene contrasena.
   passwordHash String?
   imageUrl     String?
+  /// `sub` de Google: su identificador estable de la cuenta. El correo no
+  /// basta, porque Google puede reasignar una direccion (cuenta de empresa
+  /// de alguien que se fue) y la nueva duena entraria en esta cuenta.
+  googleSub    String? @unique
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)

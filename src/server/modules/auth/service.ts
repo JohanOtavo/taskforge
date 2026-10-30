@@ -9,6 +9,7 @@ import { uniqueOrgSlug } from "../orgs/slug";
 import { writeAudit } from "@/server/audit";
 import type { DbClient } from "@/server/db";
 
+import { GoogleAuthError, type GoogleProfile } from "./google";
 import type { LoginInput, RegisterInput } from "./schema";
 
 const LOGIN_LIMIT = 8;
@@ -119,5 +120,99 @@ export async function login(
   }
 
   return { userId: user.id };
+}
+
+/// Entrar o registrarse con Google.
+///
+/// La identidad es el `sub` de Google. El correo solo sirve para enlazar la
+/// PRIMERA vez una cuenta que ya existia con esa direccion; despues manda el
+/// `sub`, y un correo que Google haya reasignado a otra persona no entra.
+///
+/// Al enlazar una cuenta con contrasena se borra la contrasena, se cierran
+/// sus sesiones y se revocan sus invitaciones pendientes. El registro con
+/// contrasena no verifica el correo, asi que cualquiera pudo crear antes una
+/// cuenta con la direccion de otra persona; si Google la enlazara sin mas,
+/// quien la creo seguiria entrando. Desde ese momento entra solo con Google.
+// ponytail: lo que esa persona creara (espacios, miembros) se queda; borrarlo
+// destruiria los datos de quien se registro de buena fe. El arreglo de fondo
+// es verificar el correo al registrarse con contrasena.
+export async function loginWithGoogle(
+  db: DbClient,
+  profile: GoogleProfile,
+  meta: RequestMeta = {},
+): Promise<{ userId: string }> {
+  const email = normalizeEmail(profile.email);
+
+  try {
+    return await db.$transaction(async (tx) => {
+      const linked = await tx.user.findUnique({
+        where: { googleSub: profile.sub },
+        select: { id: true },
+      });
+      if (linked) return { userId: linked.id };
+
+      const existing = await tx.user.findUnique({
+        where: { email },
+        select: { id: true, passwordHash: true, googleSub: true },
+      });
+
+      if (existing) {
+        if (existing.googleSub) throw new GoogleAuthError("google_conflict");
+
+        await tx.user.update({
+          where: { id: existing.id },
+          data: { googleSub: profile.sub, passwordHash: null },
+        });
+        if (existing.passwordHash) {
+          await tx.session.deleteMany({ where: { userId: existing.id } });
+          await tx.invitation.updateMany({
+            where: { invitedById: existing.id, acceptedAt: null, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        }
+        await writeAudit(tx, {
+          orgId: null,
+          actorId: existing.id,
+          actorEmail: email,
+          action: "user.google_linked",
+          entityType: "USER",
+          entityId: existing.id,
+          entityLabel: email,
+          diff: { hadPassword: existing.passwordHash !== null },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+        return { userId: existing.id };
+      }
+
+      const user = await tx.user.create({
+        data: {
+          email,
+          name: profile.name,
+          imageUrl: profile.picture,
+          googleSub: profile.sub,
+          passwordHash: null,
+        },
+        select: { id: true },
+      });
+      await writeAudit(tx, {
+        orgId: null,
+        actorId: user.id,
+        actorEmail: email,
+        action: "user.registered",
+        entityType: "USER",
+        entityId: user.id,
+        entityLabel: email,
+        diff: { method: "google" },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+      return { userId: user.id };
+    });
+  } catch (error) {
+    const mapped = mapPrismaError(error);
+    if (mapped) throw mapped;
+    throw error;
+  }
 }
 

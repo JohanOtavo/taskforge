@@ -29,6 +29,10 @@ export default function PrivacyPage() {
             Tu contraseña, nunca en claro: solo un hash scrypt del que no se puede recuperar.
           </li>
           <li>
+            Si entras con Google: el nombre, el correo y la foto de perfil de tu cuenta de
+            Google. TaskForge nunca recibe tu contraseña de Google.
+          </li>
+          <li>
             Tus sesiones abiertas, con la dirección IP y el navegador desde el que entraste, para
             poder cerrarlas y detectar accesos indebidos.
           </li>

@@ -108,6 +108,25 @@ en `DATABASE_URL_DIRECT` (paso 1).
   enlace también sale en pantalla para pasarlo por otro canal. Si la dirección
   ya tiene cuenta, entra en el acto y no hace falta enlace.
 
+### Entrar con Google
+
+Opcional: sin `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` el botón no aparece.
+
+1. Google Cloud → *Google Auth Platform* → **Clientes** → crear cliente de
+   tipo **Aplicación web**.
+2. **URI de redireccionamiento autorizados**:
+   `https://TU-APP/api/auth/google/callback` (y
+   `http://localhost:3000/api/auth/google/callback` para desarrollo). Debe
+   coincidir al carácter con `APP_URL`.
+3. Solo pide `openid email profile`: no hace falta verificación de Google.
+4. Pon las dos variables en Render.
+
+Una cuenta se identifica por su correo: entrar con Google con la dirección de
+una cuenta que ya existe entra en esa cuenta. Si esa cuenta tenía contraseña,
+**la contraseña se borra y se cierran sus sesiones**: el registro no verifica
+el correo, así que la contraseña pudo ponerla otra persona antes que la dueña
+de la dirección. Desde entonces esa cuenta entra solo con Google.
+
 ### Invitaciones por correo
 
 En Render, la vía es **Brevo por HTTPS**: `BREVO_API_KEY` (clave API v3,

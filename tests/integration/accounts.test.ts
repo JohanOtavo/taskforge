@@ -129,6 +129,102 @@ describe("inicio de sesion", () => {
     expect(codes).toContain("RATE_LIMITED");
   });
 });
+describe("entrar con Google", () => {
+  const profile = {
+    sub: "1098765",
+    email: "Bea.Lopez@Gmail.com",
+    name: "Bea Lopez",
+    picture: "https://lh3.googleusercontent.com/a/foto",
+  };
+
+  it("crea la cuenta sin contrasena, con el nombre y la foto de Google", async () => {
+    const { userId } = await auth.loginWithGoogle(db, profile, { ip: "203.0.113.40" });
+
+    const user = await db.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true, name: true, imageUrl: true, passwordHash: true },
+    });
+    expect(user).toEqual({
+      email: "bea.lopez@gmail.com",
+      name: "Bea Lopez",
+      imageUrl: profile.picture,
+      passwordHash: null,
+    });
+  });
+
+  it("entra en la cuenta que ya existe con ese correo", async () => {
+    const first = await auth.loginWithGoogle(db, profile, { ip: "203.0.113.41" });
+    const second = await auth.loginWithGoogle(db, profile, { ip: "203.0.113.41" });
+
+    expect(second.userId).toBe(first.userId);
+    expect(await db.user.count()).toBe(1);
+  });
+
+  it("al enlazar una cuenta con contrasena, borra la contrasena y cierra sus sesiones", async () => {
+    // Sin verificacion de correo en el registro, la contrasena pudo ponerla
+    // otra persona antes que la duena del correo.
+    const { userId, orgId } = await auth.register(
+      db,
+      {
+        name: "Intruso",
+        email: "bea.lopez@gmail.com",
+        password: "una-frase-larga-y-unica",
+        orgName: "Org del intruso",
+      },
+      { ip: "203.0.113.42" },
+    );
+    await db.session.create({
+      data: { tokenHash: "h".repeat(64), userId, expiresAt: new Date(Date.now() + 60_000) },
+    });
+    // Una invitacion pendiente le dejaria meter a un complice despues.
+    await db.invitation.create({
+      data: {
+        orgId: orgId!,
+        email: "complice@taskforge.local",
+        role: "ADMIN",
+        tokenHash: "i".repeat(64),
+        invitedById: userId,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    const result = await auth.loginWithGoogle(db, profile, { ip: "203.0.113.43" });
+
+    expect(result.userId).toBe(userId);
+    const user = await db.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true, googleSub: true },
+    });
+    expect(user).toEqual({ passwordHash: null, googleSub: profile.sub });
+    expect(await db.session.count({ where: { userId } })).toBe(0);
+    expect(await db.invitation.count({ where: { invitedById: userId, revokedAt: null } })).toBe(0);
+    await expect(
+      auth.login(db, { email: "bea.lopez@gmail.com", password: "una-frase-larga-y-unica" }),
+    ).rejects.toThrow("Correo o contrasena incorrectos.");
+  });
+
+  it("no deja entrar con un correo reasignado a otra cuenta de Google", async () => {
+    // Google puede reasignar una direccion (cuenta de empresa de alguien que
+    // se fue). Mismo correo con otro `sub` es otra persona.
+    await auth.loginWithGoogle(db, profile, { ip: "203.0.113.44" });
+
+    await expect(
+      auth.loginWithGoogle(db, { ...profile, sub: "otra-persona" }, { ip: "203.0.113.44" }),
+    ).rejects.toThrow("google_conflict");
+  });
+
+  it("reconoce la cuenta por su sub aunque cambie el correo en Google", async () => {
+    const first = await auth.loginWithGoogle(db, profile, { ip: "203.0.113.45" });
+    const again = await auth.loginWithGoogle(
+      db,
+      { ...profile, email: "bea.nueva@gmail.com" },
+      { ip: "203.0.113.45" },
+    );
+
+    expect(again.userId).toBe(first.userId);
+  });
+});
+
 describe("invitar por correo, estilo Trello", () => {
   let owner: TestUser;
   let org: { id: string };

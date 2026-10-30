@@ -3,7 +3,9 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/cn";
 
-const button = cva(
+/// Exportado para dar aspecto de boton a un enlace (<a>) sin anidar un
+/// <button> dentro, que no es HTML valido.
+export const button = cva(
   [
     "inline-flex items-center justify-center gap-2 rounded-lg font-medium",
     // transform y opacity son las dos propiedades que el compositor anima
