@@ -20,6 +20,7 @@ const TABLES = [
   "Comment",
   "IssueLabel",
   "Issue",
+  "Phase",
   "BoardColumn",
   "WorkflowState",
   "ProjectMember",

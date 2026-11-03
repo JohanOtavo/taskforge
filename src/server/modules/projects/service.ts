@@ -167,11 +167,14 @@ export async function listProjects(db: DbClient, actor: Actor, orgId: string) {
 /// Buscarlo sin acotar devolvia una fila arbitraria de cualquier inquilino: con
 /// dos organizaciones que tengan un proyecto "TF", /p/TF resolvia al que
 /// alcanzase antes el planificador.
+/// `phaseId`: sin indicar, todas las tarjetas; `null`, solo las que no tienen
+/// fase; un id, solo las de esa fase.
 export async function getBoard(
   db: DbClient,
   actor: Actor,
   orgId: string,
   projectKey: string,
+  filter: { phaseId?: string | null } = {},
 ) {
   const project = await db.project.findFirst({
     where: { orgId, key: projectKey, archivedAt: null },
@@ -196,7 +199,10 @@ export async function getBoard(
         wipLimit: true,
         state: { select: { id: true, name: true, category: true } },
         issues: {
-          where: { archivedAt: null },
+          where: {
+            archivedAt: null,
+            ...(filter.phaseId !== undefined ? { phaseId: filter.phaseId } : {}),
+          },
           orderBy: [{ position: "asc" }, { id: "asc" }],
           select: {
             id: true,
@@ -210,6 +216,7 @@ export async function getBoard(
             dueDate: true,
             assignee: { select: { id: true, name: true, imageUrl: true } },
             labels: { select: { label: { select: { id: true, name: true, color: true } } } },
+            phase: { select: { id: true, name: true } },
           },
         },
       },

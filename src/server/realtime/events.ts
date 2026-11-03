@@ -8,6 +8,8 @@ export type BoardEventType =
   | "issue.updated"
   | "issue.moved"
   | "issue.archived"
+  | "issue.restored"
+  | "phase.updated"
   | "comment.created"
   | "column.updated";
 

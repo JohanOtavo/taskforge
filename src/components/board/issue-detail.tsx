@@ -10,6 +10,7 @@ import {
   deleteCommentAction,
   updateIssueAction,
 } from "@/app/(app)/actions";
+import { RestoreIssueButton } from "@/components/board/restore-issue-button";
 import { Avatar, LabelChip, PriorityBadge, TypeBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -43,6 +44,7 @@ type Issue = {
   reporter: { id: string; name: string; imageUrl: string | null };
   assignee: { id: string; name: string; imageUrl: string | null } | null;
   parent: { id: string; number: number; title: string; type: string } | null;
+  phase: { id: string; name: string } | null;
   children: { id: string; number: number; title: string; type: string }[];
   labels: { label: { id: string; name: string; color: string } }[];
   comments: Comment[];
@@ -54,11 +56,12 @@ type Props = {
   role: EffectiveRole;
   actorId: string;
   members: { id: string; name: string }[];
+  phases: { id: string; name: string }[];
 };
 
 const dateFormat = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" });
 
-export function IssueDetail({ issue, projectKey, role, actorId, members }: Props) {
+export function IssueDetail({ issue, projectKey, role, actorId, members, phases }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +87,9 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
         type: formData.get("type"),
         priority: formData.get("priority"),
         assigneeId: assignee ? String(assignee) : null,
+        // Solo se envia si el formulario muestra el campo: sin fases en el
+        // tablero, no hay nada que cambiar.
+        ...(phases.length > 0 ? { phaseId: String(formData.get("phaseId") ?? "") || null } : {}),
         storyPoints: points ? Number(points) : null,
       });
 
@@ -131,9 +137,10 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
     <div className="space-y-5">
       <article className="rise-in slab rounded-2xl p-6 lift-1">
         {issue.archivedAt && (
-          <p className="mb-3 rounded-md bg-surface-2 px-3 py-2 text-sm text-text-muted">
-            Este issue esta archivado.
-          </p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface-2 px-3 py-2 text-sm text-text-muted">
+            Esta tarjeta está archivada: no aparece en el tablero.
+            {canArchive && <RestoreIssueButton issueId={issue.id} />}
+          </div>
         )}
 
         {editing ? (
@@ -185,6 +192,19 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
                   defaultValue={issue.storyPoints ?? ""}
                 />
               </Field>
+
+              {phases.length > 0 && (
+                <Field label="Fase" htmlFor="detail-phase">
+                  <Select name="phaseId" defaultValue={issue.phase?.id ?? ""}>
+                    <option value="">Sin fase</option>
+                    {phases.map((phase) => (
+                      <option key={phase.id} value={phase.id}>
+                        {phase.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
             </div>
 
             {error && (
@@ -210,6 +230,11 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
               <span className="rounded bg-surface-2 px-2 py-0.5 text-xs text-text-muted">
                 {issue.state.name}
               </span>
+              {issue.phase && (
+                <span className="rounded bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent">
+                  {issue.phase.name}
+                </span>
+              )}
               {issue.storyPoints !== null && (
                 <span className="text-xs text-text-muted">{issue.storyPoints} puntos</span>
               )}

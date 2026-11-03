@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { IssueDetail } from "@/components/board/issue-detail";
 import { requireCtx } from "@/server/context";
 import { getIssueDetail } from "@/server/modules/issues/service";
+import { listPhases } from "@/server/modules/phases/service";
 import { listProjectMembers } from "@/server/modules/orgs/service";
 import { getActiveWorkspace } from "@/server/current-org";
 
@@ -18,7 +19,10 @@ export default async function IssuePage({ params }: PageProps<"/p/[key]/[number]
   if (!workspace) notFound();
 
   const { issue, scope } = await getIssueDetail(ctx.db, ctx.actor, workspace.id, key, parsed);
-  const members = await listProjectMembers(ctx.db, ctx.actor, scope.projectId);
+  const [members, phaseList] = await Promise.all([
+    listProjectMembers(ctx.db, ctx.actor, scope.projectId),
+    listPhases(ctx.db, ctx.actor, scope.projectId),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -42,6 +46,7 @@ export default async function IssuePage({ params }: PageProps<"/p/[key]/[number]
         role={scope.role}
         actorId={ctx.actor.id}
         members={[...members.members, ...members.candidates].map((member) => member.user)}
+        phases={phaseList.phases}
       />
     </div>
   );

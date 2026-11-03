@@ -28,6 +28,7 @@ import {
   updateMemberRoleSchema,
 } from "@/server/modules/orgs/schema";
 import { createProjectSchema } from "@/server/modules/projects/schema";
+import * as phasesService from "@/server/modules/phases/service";
 
 /// Cada accion hace exactamente tres cosas: validar, resolver contexto y
 /// llamar al servicio. Si no tienen logica propia, no hay nada que probar en
@@ -151,6 +152,67 @@ export async function archiveIssueAction(issueId: unknown): Promise<Result<null>
     return null;
   });
 
+  if (result.ok) revalidatePath("/p", "layout");
+  return result;
+}
+
+export async function restoreIssueAction(
+  issueId: unknown,
+): Promise<Result<{ number: number; projectKey: string }>> {
+  const parsed = archiveIssueSchema.safeParse({ issueId });
+  if (!parsed.success) return invalid("Issue invalido.");
+
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    return issuesService.restoreIssue(ctx.db, ctx.actor, parsed.data.issueId);
+  });
+
+  if (result.ok) revalidatePath("/p", "layout");
+  return result;
+}
+
+// --------------------------------------------------------------- fases
+
+export async function createPhaseAction(formData: FormData): Promise<Result<{ id: string }>> {
+  const parsed = parseForm(phasesService.createPhaseSchema, formData);
+  if (!parsed.success) return invalid(parsed.error.issues[0]?.message ?? "Revisa el nombre.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    return phasesService.createPhase(ctx.db, ctx.actor, parsed.data);
+  });
+  if (result.ok) revalidatePath("/p", "layout");
+  return result;
+}
+
+export async function renamePhaseAction(formData: FormData): Promise<Result<void>> {
+  const parsed = parseForm(phasesService.renamePhaseSchema, formData);
+  if (!parsed.success) return invalid(parsed.error.issues[0]?.message ?? "Revisa el nombre.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await phasesService.renamePhase(ctx.db, ctx.actor, parsed.data);
+  });
+  if (result.ok) revalidatePath("/p", "layout");
+  return result;
+}
+
+export async function movePhaseAction(phaseId: unknown, direction: unknown): Promise<Result<void>> {
+  const parsed = phasesService.movePhaseSchema.safeParse({ phaseId, direction });
+  if (!parsed.success) return invalid("Fase invalida.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await phasesService.movePhase(ctx.db, ctx.actor, parsed.data);
+  });
+  if (result.ok) revalidatePath("/p", "layout");
+  return result;
+}
+
+export async function deletePhaseAction(phaseId: unknown): Promise<Result<void>> {
+  const parsed = phasesService.deletePhaseSchema.safeParse({ phaseId });
+  if (!parsed.success) return invalid("Fase invalida.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await phasesService.deletePhase(ctx.db, ctx.actor, parsed.data);
+  });
   if (result.ok) revalidatePath("/p", "layout");
   return result;
 }

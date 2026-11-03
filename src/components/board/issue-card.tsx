@@ -20,13 +20,14 @@ type Props = {
   /// Para escalonar la entrada: cada tarjeta aparece un poco despues que la
   /// anterior, lo que lee como "la columna se monta" en vez de "todo salta".
   index: number;
+  showPhase?: boolean;
 };
 
 /// A partir de esta distancia el puntero arrastra en vez de pulsar. Lo comparten
 /// el sensor de dnd-kit del tablero y el clic que abre la tarjeta.
 export const DRAG_DISTANCE_PX = 6;
 
-export function IssueCard({ issue, projectKey, draggable, index }: Props) {
+export function IssueCard({ issue, projectKey, draggable, index, showPhase = false }: Props) {
   const router = useRouter();
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -93,6 +94,9 @@ export function IssueCard({ issue, projectKey, draggable, index }: Props) {
         </div>
 
         <p className="mt-1.5 text-sm font-medium leading-snug">{issue.title}</p>
+        {showPhase && issue.phase && (
+          <p className="mt-1 text-[11px] font-medium text-accent">{issue.phase.name}</p>
+        )}
 
         {issue.labels.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1">

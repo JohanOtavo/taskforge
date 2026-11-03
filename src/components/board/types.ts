@@ -12,6 +12,7 @@ export type BoardIssue = {
   dueDate: Date | null;
   assignee: { id: string; name: string; imageUrl: string | null } | null;
   labels: { label: { id: string; name: string; color: string } }[];
+  phase: { id: string; name: string } | null;
   _count: { comments: number };
 };
 

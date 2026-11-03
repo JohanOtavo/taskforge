@@ -8,6 +8,9 @@ import { cn } from "@/lib/cn";
 export const button = cva(
   [
     "inline-flex items-center justify-center gap-2 rounded-lg font-medium",
+    // Un boton nunca encoge ni parte su texto: la regla global
+    // overflow-wrap:anywhere lo dejaria en "Guard / ar" en una fila apretada.
+    "shrink-0 whitespace-nowrap",
     // transform y opacity son las dos propiedades que el compositor anima
     // sin volver a maquetar; todo lo demas provocaria reflow en cada frame.
     "transition-[transform,box-shadow,background-color,opacity] duration-150 ease-out",

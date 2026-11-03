@@ -22,9 +22,12 @@ import { DRAG_DISTANCE_PX, IssueCard } from "./issue-card";
 import type { BoardColumnData, BoardData } from "./types";
 import { useBoardStream } from "./use-board-stream";
 
-type Props = BoardData;
+type Props = BoardData & {
+  /// Con el tablero filtrado por una fase, repetirla en cada tarjeta es ruido.
+  showPhase?: boolean;
+};
 
-export function Board({ project, columns: initialColumns, role }: Props) {
+export function Board({ project, columns: initialColumns, role, showPhase = false }: Props) {
   const router = useRouter();
   const [columns, setColumns] = useState(initialColumns);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +158,7 @@ export function Board({ project, columns: initialColumns, role }: Props) {
               projectKey={project.key}
               canMove={canMove}
               isDragActive={dragging !== null}
+              showPhase={showPhase}
             />
           ))}
         </div>
@@ -168,11 +172,13 @@ function Column({
   projectKey,
   canMove,
   isDragActive,
+  showPhase,
 }: {
   column: BoardColumnData;
   projectKey: string;
   canMove: boolean;
   isDragActive: boolean;
+  showPhase: boolean;
 }) {
   const overLimit = column.wipLimit !== null && column.issues.length > column.wipLimit;
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
@@ -226,6 +232,7 @@ function Column({
               projectKey={projectKey}
               draggable={canMove}
               index={index}
+              showPhase={showPhase}
             />
           ))}
           {column.issues.length === 0 && (

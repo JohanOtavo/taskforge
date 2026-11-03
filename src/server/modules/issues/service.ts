@@ -27,6 +27,7 @@ export type Actor = { id: string; email: string };
 /// epic con muchos hijos no deben convertir una pagina en una descarga.
 const MAX_COMMENTS = 200;
 const MAX_CHILDREN = 100;
+const MAX_ARCHIVED = 200;
 
 const TYPE_RANK = { TASK: 1, BUG: 1, STORY: 2, EPIC: 3 } as const;
 const MAX_DEPTH = 2;
@@ -58,6 +59,7 @@ export async function createIssue(
       });
 
   if (input.assigneeId) await assertOrgMember(db, scope.orgId, input.assigneeId);
+  if (input.phaseId) await assertPhase(db, scope.projectId, input.phaseId);
   const labelIds = await filterOrgLabels(db, scope.orgId, input.labelIds);
   if (input.parentId) await assertValidParent(db, scope.projectId, input.parentId, input.type);
 
@@ -92,6 +94,7 @@ export async function createIssue(
         reporterId: actor.id,
         assigneeId: input.assigneeId ?? null,
         parentId: input.parentId ?? null,
+        phaseId: input.phaseId ?? null,
         storyPoints: input.storyPoints ?? null,
         dueDate: input.dueDate ?? null,
         ...(labelIds.length
@@ -155,6 +158,7 @@ export async function updateIssue(
       stateId: true,
       assigneeId: true,
       parentId: true,
+      phaseId: true,
       storyPoints: true,
       dueDate: true,
       version: true,
@@ -169,6 +173,7 @@ export async function updateIssue(
     if (!state) notFound("El estado");
   }
   if (input.assigneeId) await assertOrgMember(db, scope.orgId, input.assigneeId);
+  if (input.phaseId) await assertPhase(db, scope.projectId, input.phaseId);
   if (input.parentId) {
     await assertValidParent(
       db,
@@ -187,6 +192,7 @@ export async function updateIssue(
     ...(input.stateId !== undefined ? { stateId: input.stateId } : {}),
     ...(input.assigneeId !== undefined ? { assigneeId: input.assigneeId } : {}),
     ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
+    ...(input.phaseId !== undefined ? { phaseId: input.phaseId } : {}),
     ...(input.storyPoints !== undefined ? { storyPoints: input.storyPoints } : {}),
     ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
   };
@@ -385,6 +391,108 @@ export async function archiveIssue(
   });
 }
 
+/// Tarjetas archivadas de un tablero, las ultimas primero. Como getBoard, la
+/// clave necesita el orgId para ser inequivoca.
+export async function listArchivedIssues(
+  db: DbClient,
+  actor: Actor,
+  orgId: string,
+  projectKey: string,
+) {
+  const project = await db.project.findFirst({
+    where: { orgId, key: projectKey, archivedAt: null },
+    select: { id: true, key: true, name: true },
+  });
+  if (!project) notFound("El proyecto");
+
+  const scope = await requireProjectAccess(db, actor.id, project.id, "issue.read");
+
+  const issues = await db.issue.findMany({
+    where: { projectId: project.id, archivedAt: { not: null } },
+    orderBy: { archivedAt: "desc" },
+    take: MAX_ARCHIVED,
+    select: {
+      id: true,
+      number: true,
+      title: true,
+      type: true,
+      priority: true,
+      archivedAt: true,
+      state: { select: { name: true } },
+    },
+  });
+
+  return { project, role: scope.role, issues };
+}
+
+/// Devuelve una tarjeta archivada al tablero: a la columna de su estado y al
+/// final, como si acabara de llegar. Si ese estado ya no tiene columna, va a
+/// la primera y toma su estado, para que tablero y estado no se contradigan.
+export async function restoreIssue(
+  db: DbClient,
+  actor: Actor,
+  issueId: string,
+): Promise<{ number: number; projectKey: string }> {
+  // requireIssueAccess no sirve: solo encuentra tarjetas SIN archivar.
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, archivedAt: { not: null } },
+    select: { number: true, projectId: true, stateId: true },
+  });
+  if (!issue) notFound("El issue");
+
+  // Mismo permiso que archivar: quien no puede sacar una tarjeta del tablero
+  // tampoco decide que vuelva.
+  const scope = await requireProjectAccess(db, actor.id, issue.projectId, "issue.delete");
+
+  await db.$transaction(async (tx) => {
+    const column =
+      (await tx.boardColumn.findFirst({
+        where: { projectId: issue.projectId, stateId: issue.stateId },
+        select: { id: true, stateId: true },
+      })) ??
+      (await tx.boardColumn.findFirst({
+        where: { projectId: issue.projectId },
+        orderBy: { position: "asc" },
+        select: { id: true, stateId: true },
+      }));
+    const position = await nextPositionInColumn(tx, issue.projectId, column?.id ?? null);
+
+    // Condicionado a seguir archivada: dos restauraciones a la vez no la
+    // colocan dos veces.
+    const restored = await tx.issue.updateMany({
+      where: { id: issueId, archivedAt: { not: null } },
+      data: {
+        archivedAt: null,
+        columnId: column?.id ?? null,
+        stateId: column?.stateId ?? issue.stateId,
+        position,
+        version: { increment: 1 },
+      },
+    });
+    if (restored.count === 0) conflict("Esa tarjeta ya se ha restaurado.");
+
+    await writeAudit(tx, {
+      orgId: scope.orgId,
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: "issue.restored",
+      entityType: "ISSUE",
+      entityId: issueId,
+      entityLabel: `${scope.projectKey}-${issue.number}`,
+    });
+
+    await publishBoardEvent(tx, {
+      projectId: scope.projectId,
+      type: "issue.restored",
+      entityId: issueId,
+      payload: { columnId: column?.id ?? null },
+      actorId: actor.id,
+    });
+  });
+
+  return { number: issue.number, projectKey: scope.projectKey };
+}
+
 export async function listIssues(db: DbClient, actor: Actor, filter: IssueFilter) {
   const scope = await requireProjectAccess(db, actor.id, filter.projectId, "issue.read");
 
@@ -463,6 +571,7 @@ export async function getIssueDetail(
       reporter: { select: { id: true, name: true, imageUrl: true } },
       assignee: { select: { id: true, name: true, imageUrl: true } },
       parent: { select: { id: true, number: true, title: true, type: true } },
+      phase: { select: { id: true, name: true } },
       children: {
         where: { archivedAt: null },
         select: { id: true, number: true, title: true, type: true },
@@ -491,6 +600,16 @@ export async function getIssueDetail(
 }
 
 // ------------------------------------------------------------- utilidades
+
+/// La fase tiene que ser de ESTE proyecto. La FK compuesta tambien lo impide,
+/// pero aqui el error dice que fallo en vez de un 500.
+async function assertPhase(db: DbClient, projectId: string, phaseId: string): Promise<void> {
+  const phase = await db.phase.findFirst({
+    where: { id: phaseId, projectId },
+    select: { id: true },
+  });
+  if (!phase) notFound("La fase");
+}
 
 async function nextPositionInColumn(
   db: TxClient,

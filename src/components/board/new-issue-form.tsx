@@ -13,9 +13,19 @@ type Props = {
   columns: { id: string; name: string }[];
   members: { id: string; name: string; email: string }[];
   labels: { id: string; name: string; color: string }[];
+  phases: { id: string; name: string }[];
+  /// La fase que se esta viendo: lo natural es crear la tarjeta en ella.
+  defaultPhaseId?: string;
 };
 
-export function NewIssueForm({ projectId, columns, members, labels }: Props) {
+export function NewIssueForm({
+  projectId,
+  columns,
+  members,
+  labels,
+  phases,
+  defaultPhaseId = "",
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +48,7 @@ export function NewIssueForm({ projectId, columns, members, labels }: Props) {
         priority: formData.get("priority"),
         columnId: String(formData.get("columnId") ?? "") || undefined,
         assigneeId: assigneeId ? String(assigneeId) : null,
+        phaseId: String(formData.get("phaseId") ?? "") || null,
         storyPoints: storyPoints ? Number(storyPoints) : null,
         labelIds: selectedLabels,
       });
@@ -94,6 +105,19 @@ export function NewIssueForm({ projectId, columns, members, labels }: Props) {
             ))}
           </Select>
         </Field>
+
+        {phases.length > 0 && (
+          <Field label="Fase" htmlFor="issue-phase">
+            <Select name="phaseId" defaultValue={defaultPhaseId}>
+              <option value="">Sin fase</option>
+              {phases.map((phase) => (
+                <option key={phase.id} value={phase.id}>
+                  {phase.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
 
         <Field label="Asignar a" htmlFor="issue-assignee">
           <Select name="assigneeId" defaultValue="">
