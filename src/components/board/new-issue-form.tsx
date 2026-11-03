@@ -55,7 +55,7 @@ export function NewIssueForm({ projectId, columns, members, labels }: Props) {
   return (
     <form
       action={onSubmit}
-      className="w-full max-w-lg space-y-4 rounded-xl border border-border bg-surface p-4"
+      className="w-full max-w-lg space-y-4 slab rounded-xl p-4"
     >
       <Field label="Titulo" htmlFor="issue-title">
         <Input name="title" required minLength={3} maxLength={240} />

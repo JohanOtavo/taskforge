@@ -18,7 +18,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { can } from "@/server/authz/permissions";
 
-import { IssueCard } from "./issue-card";
+import { DRAG_DISTANCE_PX, IssueCard } from "./issue-card";
 import type { BoardColumnData, BoardData } from "./types";
 import { useBoardStream } from "./use-board-stream";
 
@@ -48,7 +48,7 @@ export function Board({ project, columns: initialColumns, role }: Props) {
   const sensors = useSensors(
     // 6 px de holgura: sin ella, un clic en el enlace del issue se interpreta
     // como arrastre.
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: DRAG_DISTANCE_PX } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -181,7 +181,9 @@ function Column({
     <section
       className={cn(
         "scene flex w-72 shrink-0 flex-col rounded-2xl border border-border",
-        "bg-surface-2/50 transition-colors duration-200",
+        // Casi opaca y sin desenfoque: un backdrop-filter por columna encima
+        // de un WebGL en movimiento obliga a recomponer todo en cada fotograma.
+        "bg-surface-2/90 transition-colors duration-200",
         isOver && "border-accent/60 bg-surface-2",
       )}
       aria-label={column.name}

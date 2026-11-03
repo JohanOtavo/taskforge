@@ -14,7 +14,7 @@ export default function ShortcutsPage() {
           Funcionan en toda la aplicación, salvo mientras escribes en un campo.
         </p>
       </div>
-      <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+      <ul className="divide-y divide-border slab rounded-xl">
         {SHORTCUTS.map((shortcut) => (
           <li key={shortcut.key} className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
             {shortcut.text}

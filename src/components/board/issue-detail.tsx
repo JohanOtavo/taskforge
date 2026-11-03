@@ -129,7 +129,7 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
 
   return (
     <div className="space-y-5">
-      <article className="rise-in rounded-2xl border border-border bg-surface p-6 lift-1">
+      <article className="rise-in slab rounded-2xl p-6 lift-1">
         {issue.archivedAt && (
           <p className="mb-3 rounded-md bg-surface-2 px-3 py-2 text-sm text-text-muted">
             Este issue esta archivado.
@@ -289,7 +289,7 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
 
       {(issue.parent || issue.children.length > 0) && (
         <section
-          className="rise-in rounded-2xl border border-border bg-surface p-6 lift-1"
+          className="rise-in slab rounded-2xl p-6 lift-1"
           style={{ animationDelay: "80ms" }}
         >
           <h2 className="mb-3 text-sm font-semibold">Jerarquia</h2>
@@ -323,7 +323,7 @@ export function IssueDetail({ issue, projectKey, role, actorId, members }: Props
       )}
 
       <section
-        className="rise-in rounded-2xl border border-border bg-surface p-6 lift-1"
+        className="rise-in slab rounded-2xl p-6 lift-1"
         style={{ animationDelay: "160ms" }}
       >
         <h2 className="mb-4 text-sm font-semibold">Comentarios ({issue.comments.length})</h2>

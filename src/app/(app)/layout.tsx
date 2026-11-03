@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountMenu } from "@/components/layout/account-menu";
+import { ForgeBackdrop } from "@/components/layout/forge-backdrop";
 import { KeyboardShortcuts } from "@/components/layout/keyboard-shortcuts";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
@@ -27,11 +28,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <ForgeBackdrop />
       <header className="glass sticky top-0 z-30 border-b border-border">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
           <Link
             href="/"
-            className="text-gradient text-lg font-semibold tracking-tight"
+            className="text-gradient font-display text-xl font-bold tracking-tight"
           >
             TaskForge
           </Link>

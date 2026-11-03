@@ -109,7 +109,7 @@ export function MembersAdmin({
       )}
 
       {canInvite && (
-        <section className="rounded-xl border border-border bg-surface p-5">
+        <section className="slab rounded-xl p-5">
           <h2 className="mb-4 text-sm font-semibold">Invitar</h2>
           <form action={onInvite} className="flex flex-wrap items-end gap-3">
             <input type="hidden" name="orgId" value={orgId} />
@@ -146,7 +146,7 @@ export function MembersAdmin({
         </section>
       )}
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-4 text-sm font-semibold">Miembros ({members.length})</h2>
         <ul className="divide-y divide-border">
           {members.map((member) => (
@@ -198,7 +198,7 @@ export function MembersAdmin({
         </ul>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-4 text-sm font-semibold">Etiquetas</h2>
         <ul className="mb-4 flex flex-wrap gap-2">
           {labels.map((label) => (

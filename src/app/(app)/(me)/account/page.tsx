@@ -12,7 +12,7 @@ export default async function AccountPage() {
     <>
       <h1 className="text-xl font-semibold">Gestionar cuenta</h1>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-4 text-sm font-semibold">Tu cuenta</h2>
         <dl className="space-y-3 text-sm">
           <div className="flex flex-wrap justify-between gap-2">
@@ -32,7 +32,7 @@ export default async function AccountPage() {
         </dl>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-1 text-sm font-semibold">Contraseña</h2>
         <p className="mb-4 text-sm text-text-muted">
           {account.hasPassword
@@ -42,7 +42,7 @@ export default async function AccountPage() {
         <PasswordForm hasPassword={account.hasPassword} />
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-1 text-sm font-semibold">Sesiones</h2>
         <p className="mb-4 text-sm text-text-muted">
           {otherSessions === 0

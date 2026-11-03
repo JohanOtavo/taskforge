@@ -17,11 +17,11 @@ export default async function CardsPage() {
       </div>
 
       {cards.length === 0 ? (
-        <section className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-text-muted">
+        <section className="rounded-xl border border-dashed border-border bg-surface/70 p-8 text-center text-sm text-text-muted">
           No tienes tarjetas pendientes.
         </section>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="divide-y divide-border slab rounded-xl">
           {cards.map((card) => {
             const params = new URLSearchParams({
               org: card.orgId,

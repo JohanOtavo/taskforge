@@ -4,15 +4,15 @@
 /* Semanticos, nunca colores sueltos repartidos por los componentes. */
 :root {
   color-scheme: light dark;
-  --bg: #eef1f6;
-  --bg-accent: #dfe5f0;
+  --bg: #e8edf3;
+  --bg-accent: #d9e0ea;
   --surface: #ffffff;
-  --surface-2: #f2f4f8;
-  --border: #dde1ea;
-  --text: #121521;
-  --text-muted: #646c7e;
-  --accent: #4c6ef5;
-  --accent-2: #8b5cf6;
+  --surface-2: #f0f3f7;
+  --border: #d5dce6;
+  --text: #141a24;
+  --text-muted: #5a6475;
+  --accent: #c2410c;
+  --accent-2: #b45309;
   --accent-text: #ffffff;
   --danger: #dc2626;
   --success: #15803d;
@@ -39,27 +39,46 @@
   --dur-fast: 140ms;
   --dur: 260ms;
   --dur-slow: 520ms;
+
+  /* Escena 3D y grosor de las placas. */
+  --scene-mode: light;
+  --scene-metal: #cfd7e2;
+  --scene-hot: #f3b78e;
+  --scene-ember: #ea580c;
+  --scene-cool: #ffffff;
+  --slab-highlight: rgb(255 255 255 / 0.9);
+  --slab-edge: #c3ccd8;
+  --glow: rgb(234 88 12 / 0.1);
 }
 
 /* Oscuro por el sistema, salvo que se haya elegido claro. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d1017;
-    --bg-accent: #141927;
-    --surface: #171b26;
-    --surface-2: #1f2430;
-    --border: #2a3040;
-    --text: #e8eaf0;
-    --text-muted: #949cb0;
-    --accent: #748ffc;
-    --accent-2: #a78bfa;
-    --accent-text: #0d1017;
+    --bg: #0e131c;
+    --bg-accent: #151c28;
+    --surface: #171e2b;
+    --surface-2: #202938;
+    --border: #2d3748;
+    --text: #eaedf3;
+    --text-muted: #98a2b5;
+    --accent: #ff8a3d;
+    --accent-2: #ffc15e;
+    --accent-text: #1a0f06;
     --danger: #f87171;
     --success: #4ade80;
 
     --lift-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.3);
     --lift-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 20px rgb(0 0 0 / 0.4);
     --lift-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 24px 48px rgb(0 0 0 / 0.5);
+
+    --scene-mode: dark;
+    --scene-metal: #6b7c96;
+    --scene-hot: #a84f22;
+    --scene-ember: #ff7a2e;
+    --scene-cool: #b9cdf0;
+    --slab-highlight: rgb(255 255 255 / 0.07);
+    --slab-edge: #0a0e15;
+    --glow: rgb(255 122 46 / 0.2);
   }
 }
 
@@ -67,22 +86,31 @@
    entre una media query y un selector. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0d1017;
-  --bg-accent: #141927;
-  --surface: #171b26;
-  --surface-2: #1f2430;
-  --border: #2a3040;
-  --text: #e8eaf0;
-  --text-muted: #949cb0;
-  --accent: #748ffc;
-  --accent-2: #a78bfa;
-  --accent-text: #0d1017;
+  --bg: #0e131c;
+  --bg-accent: #151c28;
+  --surface: #171e2b;
+  --surface-2: #202938;
+  --border: #2d3748;
+  --text: #eaedf3;
+  --text-muted: #98a2b5;
+  --accent: #ff8a3d;
+  --accent-2: #ffc15e;
+  --accent-text: #1a0f06;
   --danger: #f87171;
   --success: #4ade80;
 
   --lift-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.3);
   --lift-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 20px rgb(0 0 0 / 0.4);
   --lift-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 24px 48px rgb(0 0 0 / 0.5);
+
+  --scene-mode: dark;
+  --scene-metal: #6b7c96;
+  --scene-hot: #a84f22;
+  --scene-ember: #ff7a2e;
+  --scene-cool: #b9cdf0;
+  --slab-highlight: rgb(255 255 255 / 0.07);
+  --slab-edge: #0a0e15;
+  --glow: rgb(255 122 46 / 0.2);
 }
 
 :root[data-theme="light"] {
@@ -104,15 +132,28 @@
   --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
 }
 
+/* El resplandor de la forja viene de abajo. Es tambien el fondo de quien no
+   tiene WebGL o ha pedido menos movimiento: nadie ve un hueco vacio. */
 body {
   background:
+    radial-gradient(70rem 30rem at 50% 112%, var(--glow), transparent 70%),
     radial-gradient(80rem 40rem at 15% -10%, var(--bg-accent), transparent 60%),
-    radial-gradient(60rem 36rem at 95% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 55%),
     var(--bg);
   background-attachment: fixed;
   color: var(--text);
+  /* Una palabra sin espacios (un enlace, un texto pegado) se parte en vez de
+     salirse de su caja. `anywhere` y no `break-word`: tambien deja encoger a
+     las columnas flex y grid que la contienen. */
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 
 /* Foco visible siempre: quitarlo rompe la navegacion por teclado. */
@@ -188,11 +229,6 @@ body {
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
-@keyframes shimmer {
-  from { background-position: 200% 0; }
-  to   { background-position: -200% 0; }
-}
-
 .rise-in {
   animation: rise-in var(--dur-slow) var(--ease-out) backwards;
 }
@@ -205,14 +241,12 @@ body {
   animation: pulse-ring 2.4s var(--ease-out) infinite;
 }
 
-/* Degradado animado para los titulos. */
+/* Metal caliente en la punta del logo. Estatico: el fondo ya se mueve. */
 .text-gradient {
-  background: linear-gradient(100deg, var(--text) 20%, var(--accent) 45%, var(--accent-2) 60%, var(--text) 85%);
-  background-size: 200% 100%;
+  background: linear-gradient(100deg, var(--text) 35%, var(--accent) 75%, var(--accent-2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: shimmer 9s linear infinite;
 }
 
 /* Cristal: solo donde hay algo detras que valga la pena ver. */
@@ -245,6 +279,55 @@ body {
   .card-glare::after {
     display: none;
   }
+}
+
+/* Placa de metal: canto superior iluminado y grosor visible por debajo. Todo
+   en box-shadow, que no mueve la maqueta y no necesita capas extra. */
+.slab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow:
+    inset 0 1px 0 var(--slab-highlight),
+    0 2px 0 var(--slab-edge),
+    var(--lift-2);
+}
+
+/* El calor de una tarjeta ES su prioridad: del acero frio al metal al rojo.
+   El texto de la prioridad sigue en la tarjeta: el color nunca va solo. */
+.heat {
+  --heat: var(--label-slate);
+  position: relative;
+  overflow: hidden;
+}
+
+.heat::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--heat), color-mix(in oklab, var(--heat) 30%, transparent));
+}
+
+.heat[data-priority="MEDIUM"] { --heat: var(--label-blue); }
+.heat[data-priority="HIGH"] { --heat: var(--label-amber); }
+.heat[data-priority="URGENT"] {
+  --heat: var(--label-red);
+  box-shadow:
+    inset 0 1px 0 var(--slab-highlight),
+    0 2px 0 var(--slab-edge),
+    0 0 18px color-mix(in oklab, var(--label-red) 32%, transparent),
+    var(--lift-2);
+}
+
+/* Clave de proyecto troquelada en la placa. */
+.stamp {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 2px 3px rgb(0 0 0 / 0.22),
+    inset 0 -1px 0 var(--slab-highlight);
 }
 
 /* Utilidades de elevacion.

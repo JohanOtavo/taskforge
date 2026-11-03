@@ -3,6 +3,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import { MessageSquare } from "lucide-react";
 
 import { Avatar, LabelChip, PriorityBadge, TypeBadge } from "@/components/ui/badge";
@@ -20,16 +22,41 @@ type Props = {
   index: number;
 };
 
+/// A partir de esta distancia el puntero arrastra en vez de pulsar. Lo comparten
+/// el sensor de dnd-kit del tablero y el clic que abre la tarjeta.
+export const DRAG_DISTANCE_PX = 6;
+
 export function IssueCard({ issue, projectKey, draggable, index }: Props) {
+  const router = useRouter();
+  const pressedAt = useRef<{ x: number; y: number } | null>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: issue.id,
     disabled: !draggable,
   });
+  const href = `/p/${projectKey}/${issue.number}`;
+
+  /// Pulsar en cualquier parte abre la tarjeta. Un arrastre tambien acaba en
+  /// `click` al soltar, asi que se descarta si el puntero se movio lo bastante
+  /// como para que dnd-kit lo tomara por arrastre.
+  function onClick(event: React.MouseEvent<HTMLLIElement>) {
+    // El enlace de la clave ya navega por su cuenta.
+    if ((event.target as Element).closest("a")) return;
+    const start = pressedAt.current;
+    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > DRAG_DISTANCE_PX) {
+      return;
+    }
+    router.push(href);
+  }
 
   return (
     <li
       ref={setNodeRef}
-      className={cn("rise-in", isDragging && "z-20")}
+      className={cn("rise-in", isDragging && "z-20", !draggable && "cursor-pointer")}
+      // Fase de captura: `listeners` de dnd-kit ya ocupa onPointerDown.
+      onPointerDownCapture={(event) => {
+        pressedAt.current = { x: event.clientX, y: event.clientY };
+      }}
+      onClick={onClick}
       style={{
         // dnd-kit mueve la tarjeta; la inclinacion vive en el hijo para que
         // las dos transformaciones no se pisen.
@@ -43,9 +70,9 @@ export function IssueCard({ issue, projectKey, draggable, index }: Props) {
     >
       <Tilt
         disabled={isDragging}
+        data-priority={issue.priority}
         className={cn(
-          "rounded-xl border border-border bg-surface p-3",
-          "lift-1 hover-lift",
+          "slab heat rounded-xl p-3 pt-3.5",
           draggable && "cursor-grab active:cursor-grabbing",
           // Al arrastrar se despega de verdad: sube en Z, gira un poco y
           // proyecta la sombra mas larga de la escala.

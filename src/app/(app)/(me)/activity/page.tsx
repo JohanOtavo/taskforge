@@ -43,11 +43,11 @@ export default async function ActivityPage() {
       </div>
 
       {rows.length === 0 ? (
-        <section className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-text-muted">
+        <section className="rounded-xl border border-dashed border-border bg-surface/70 p-8 text-center text-sm text-text-muted">
           Todavía no hay actividad.
         </section>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="divide-y divide-border slab rounded-xl">
           {rows.map((row) => (
             <li key={row.id} className="px-5 py-3">
               <p className="text-sm">

@@ -33,7 +33,7 @@ export function NewProjectForm({ orgId }: { orgId: string }) {
   return (
     <form
       action={onSubmit}
-      className="w-full max-w-md space-y-4 rounded-xl border border-border bg-surface p-4"
+      className="w-full max-w-md space-y-4 slab rounded-xl p-4"
     >
       <input type="hidden" name="orgId" value={orgId} />
 

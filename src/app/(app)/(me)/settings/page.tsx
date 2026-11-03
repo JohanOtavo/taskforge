@@ -14,7 +14,7 @@ export default async function SettingsPage() {
     <>
       <h1 className="text-xl font-semibold">Ajustes</h1>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-1 text-sm font-semibold">Tema</h2>
         <p className="mb-4 text-sm text-text-muted">Se guarda en este navegador.</p>
         <div className="max-w-xs">
@@ -22,7 +22,7 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-1 text-sm font-semibold">Notificaciones</h2>
         <p className="mb-4 text-sm text-text-muted">
           Lo que aparece en la campana. Los avisos no se envían por correo.

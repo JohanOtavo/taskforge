@@ -15,7 +15,7 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-4 text-sm font-semibold">Tu perfil</h2>
         <ProfileForm name={actor.name} />
         <p className="mt-4 text-xs text-text-muted">
@@ -24,7 +24,7 @@ export default async function ProfilePage() {
         </p>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="slab rounded-xl p-5">
         <h2 className="mb-3 text-sm font-semibold">Quién puede ver tu perfil</h2>
         <ul className="list-disc space-y-2 pl-5 text-sm text-text-muted">
           <li>Las personas de tus espacios de trabajo ven tu nombre y tu correo.</li>

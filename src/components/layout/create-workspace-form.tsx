@@ -26,7 +26,7 @@ export function CreateWorkspaceForm() {
   }
 
   return (
-    <form action={onSubmit} className="space-y-4 rounded-xl border border-border bg-surface p-5">
+    <form action={onSubmit} className="space-y-4 slab rounded-xl p-5">
       <Field
         label="Nombre del espacio"
         htmlFor="workspace-name"

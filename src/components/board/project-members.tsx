@@ -87,7 +87,7 @@ export function ProjectMembers({ projectId, orgId, members, candidates, canManag
   }
 
   return (
-    <div className="w-full max-w-lg space-y-4 rounded-xl border border-border bg-surface p-4">
+    <div className="w-full max-w-lg space-y-4 slab rounded-xl p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Miembros del tablero</h2>
         <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>

@@ -30,7 +30,7 @@ export default function HelpPage() {
 
       <div className="space-y-3">
         {TOPICS.map((topic) => (
-          <section key={topic.title} className="rounded-xl border border-border bg-surface p-5">
+          <section key={topic.title} className="slab rounded-xl p-5">
             <h2 className="mb-1 text-sm font-semibold">{topic.title}</h2>
             <p className="text-sm text-text-muted">{topic.text}</p>
           </section>

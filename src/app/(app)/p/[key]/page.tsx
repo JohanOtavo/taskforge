@@ -46,7 +46,7 @@ export default async function BoardPage({ params }: PageProps<"/p/[key]">) {
           </nav>
           <h1 className="text-2xl font-semibold tracking-tight">{board.project.name}</h1>
           <p className="text-sm text-text-muted">
-            {total} {total === 1 ? "issue activo" : "issues activos"}
+            {total} {total === 1 ? "tarjeta activa" : "tarjetas activas"}
           </p>
         </div>
 

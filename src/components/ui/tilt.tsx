@@ -13,6 +13,7 @@ type Props = {
   /// Cuanto se despega del plano al apuntarla, en px.
   lift?: number;
   disabled?: boolean;
+  "data-priority"?: string;
 };
 
 /// Inclinacion 3D que sigue al puntero.
@@ -23,7 +24,14 @@ type Props = {
 ///
 /// Solo reacciona a un puntero fino (raton o lapiz). En tactil, inclinar al
 /// tocar pelea con el arrastre y no aporta nada: el dedo tapa la tarjeta.
-export function Tilt({ children, className, max = 7, lift = 14, disabled }: Props) {
+export function Tilt({
+  children,
+  className,
+  max = 7,
+  lift = 14,
+  disabled,
+  "data-priority": priority,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<CSSProperties>({});
   const [tilting, setTilting] = useState(false);
@@ -59,6 +67,7 @@ export function Tilt({ children, className, max = 7, lift = 14, disabled }: Prop
       className={cn("card-3d card-glare relative", className)}
       style={style}
       data-tilting={tilting}
+      data-priority={priority}
       onPointerMove={onPointerMove}
       onPointerLeave={reset}
       // Al empezar a arrastrar, la inclinacion estorba: la transformacion del
