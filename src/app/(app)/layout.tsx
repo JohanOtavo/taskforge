@@ -1,12 +1,16 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { logoutAction } from "../(auth)/actions";
-import { Avatar } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { AccountMenu } from "@/components/layout/account-menu";
+import { KeyboardShortcuts } from "@/components/layout/keyboard-shortcuts";
+import { NotificationsMenu } from "@/components/layout/notifications-menu";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
+import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import { getActor } from "@/server/context";
 import { getActiveWorkspace, listWorkspaces } from "@/server/current-org";
+import { db } from "@/server/db";
+import { countUnread } from "@/server/modules/notifications/service";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const actor = await getActor();
@@ -14,9 +18,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   // protege: una cookie falsificada llega hasta aqui.
   if (!actor) redirect("/login");
 
-  const [workspaces, current] = await Promise.all([
+  const [workspaces, current, unread, store] = await Promise.all([
     listWorkspaces(actor.id),
     getActiveWorkspace(actor.id),
+    countUnread(db, actor),
+    cookies(),
   ]);
 
   return (
@@ -47,19 +53,38 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
                 Equipo
               </Link>
             )}
-            <span className="mx-2 hidden items-center gap-2 sm:flex">
-              <Avatar name={actor.name} />
-              <span className="text-xs text-text-muted">{actor.name}</span>
-            </span>
-            <form action={logoutAction}>
-              <Button type="submit" variant="ghost" size="sm">
-                Salir
-              </Button>
-            </form>
+            <NotificationsMenu initialUnread={unread} />
+            <Link
+              href="/help"
+              aria-label="Ayuda"
+              title="Ayuda"
+              className="hidden h-9 w-9 items-center justify-center rounded-md text-text-muted hover:bg-surface-2 hover:text-text sm:flex"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+                <path d="M12 17h.01" />
+              </svg>
+            </Link>
+            <AccountMenu
+              user={{ name: actor.name, email: actor.email, imageUrl: actor.imageUrl }}
+              theme={parseTheme(store.get(THEME_COOKIE)?.value)}
+            />
           </nav>
         </div>
       </header>
 
+      <KeyboardShortcuts />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
     </div>
   );

@@ -3,6 +3,7 @@
 /* ---------------------------------------------------------------- tokens */
 /* Semanticos, nunca colores sueltos repartidos por los componentes. */
 :root {
+  color-scheme: light dark;
   --bg: #eef1f6;
   --bg-accent: #dfe5f0;
   --surface: #ffffff;
@@ -40,8 +41,9 @@
   --dur-slow: 520ms;
 }
 
+/* Oscuro por el sistema, salvo que se haya elegido claro. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0d1017;
     --bg-accent: #141927;
     --surface: #171b26;
@@ -59,6 +61,32 @@
     --lift-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 20px rgb(0 0 0 / 0.4);
     --lift-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 24px 48px rgb(0 0 0 / 0.5);
   }
+}
+
+/* Oscuro elegido a mano. Mismos valores: CSS no deja reutilizar un bloque
+   entre una media query y un selector. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1017;
+  --bg-accent: #141927;
+  --surface: #171b26;
+  --surface-2: #1f2430;
+  --border: #2a3040;
+  --text: #e8eaf0;
+  --text-muted: #949cb0;
+  --accent: #748ffc;
+  --accent-2: #a78bfa;
+  --accent-text: #0d1017;
+  --danger: #f87171;
+  --success: #4ade80;
+
+  --lift-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px rgb(0 0 0 / 0.3);
+  --lift-2: 0 2px 4px rgb(0 0 0 / 0.5), 0 8px 20px rgb(0 0 0 / 0.4);
+  --lift-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 24px 48px rgb(0 0 0 / 0.5);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 @theme inline {

@@ -33,6 +33,12 @@ model User {
   /// de alguien que se fue) y la nueva duena entraria en esta cuenta.
   googleSub    String? @unique
 
+  /// Preferencias de notificacion. Por defecto todo activo: quien no entra
+  /// nunca en Ajustes tiene que enterarse igual de lo que le asignan.
+  notifyAssigned   Boolean @default(true)
+  notifyComments   Boolean @default(true)
+  notifyMembership Boolean @default(true)
+
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
@@ -44,6 +50,7 @@ model User {
   comments       Comment[]
   auditLogs      AuditLog[]
   sentInvites    Invitation[]    @relation("InvitationInviter")
+  notifications  Notification[]
 }
 
 /// Sesion opaca respaldada en base de datos. Solo se almacena el hash del
@@ -88,6 +95,8 @@ model Organization {
   labels      Label[]
   invitations Invitation[]
   auditLogs   AuditLog[]
+
+  notifications Notification[]
 }
 
 model Membership {
@@ -112,7 +121,7 @@ model Invitation {
   role        OrgRole
   tokenHash   String    @unique
   invitedById String
-  expiresAt   DateTime @db.Timestamptz(6)
+  expiresAt   DateTime  @db.Timestamptz(6)
   acceptedAt  DateTime? @db.Timestamptz(6)
   revokedAt   DateTime? @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @db.Timestamptz(6)
@@ -164,11 +173,11 @@ model Project {
 
   org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
-  members ProjectMember[]
-  states  WorkflowState[]
-  columns BoardColumn[]
-  issues  Issue[]
-  events  ProjectEvent[]
+  members     ProjectMember[]
+  states      WorkflowState[]
+  columns     BoardColumn[]
+  issues      Issue[]
+  events      ProjectEvent[]
   invitations Invitation[]
 
   @@unique([orgId, key])
@@ -306,13 +315,13 @@ model Issue {
   labels   IssueLabel[]
   comments Comment[]
 
-  @@index([reporterId])
-  @@index([stateId])
   @@unique([projectId, number])
   // Destino de la FK compuesta de Comment.
   @@unique([id, orgId])
   // Destino de las FK compuestas de parent y de IssueLabel.
   @@unique([id, projectId])
+  @@index([reporterId])
+  @@index([stateId])
   // Sirve a nextPositionInColumn, NO a la lectura del tablero: esa va por el
   // indice parcial Issue_column_board_idx, que empieza por columnId porque la
   // consulta que emite Prisma para una relacion anidada no lleva projectId.
@@ -402,9 +411,9 @@ model AuditLog {
   requestId   String?
   createdAt   DateTime    @default(now()) @db.Timestamptz(6)
 
-  org Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  org   Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
   // SetNull: borrar un usuario no debe borrar su historial.
-  actor User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actor User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([orgId, createdAt(sort: Desc)])
   @@index([actorId])
@@ -429,4 +438,33 @@ model ProjectEvent {
 
   @@index([projectId, seq])
   @@index([createdAt])
+}
+
+enum NotificationType {
+  ISSUE_ASSIGNED
+  ISSUE_COMMENTED
+  MEMBER_ADDED
+  INVITE_ACCEPTED
+}
+
+/// Aviso para una persona. `message` es una instantanea, como en la auditoria:
+/// lo que se ve es lo que paso entonces, aunque la tarjeta cambie de titulo.
+model Notification {
+  id      String           @id @default(cuid())
+  userId  String
+  orgId   String
+  type    NotificationType
+  message String
+  /// Ruta interna, generada por el servidor. Hay que entrar por /go, porque
+  /// `/p/KEY` depende del espacio activo y la clave solo es unica por espacio.
+  path    String
+  readAt  DateTime?        @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([orgId])
 }

@@ -7,6 +7,7 @@ import { buildDiff, writeAudit } from "@/server/audit";
 import { requireIssueAccess, requireProjectAccess } from "@/server/authz/resolve";
 import type { DbClient, TxClient } from "@/server/db";
 import { AppError, conflict, notFound } from "@/server/errors";
+import { notify } from "@/server/modules/notifications/service";
 import { publishBoardEvent } from "@/server/realtime/publish";
 
 import { buildIssueOrderBy, buildIssueWhere } from "./filter";
@@ -113,6 +114,16 @@ export async function createIssue(
       entityId: issue.id,
       entityLabel: `${scope.projectKey}-${issue.number}`,
       diff: { title: input.title, type: input.type, priority: input.priority },
+    });
+
+    await notify(tx, {
+      recipientIds: [input.assigneeId],
+      actorId: actor.id,
+      orgId: scope.orgId,
+      projectId: scope.projectId,
+      type: "ISSUE_ASSIGNED",
+      text: `te asignó ${scope.projectKey}-${issue.number}: ${input.title}`,
+      path: `/p/${scope.projectKey}/${issue.number}`,
     });
 
     await publishBoardEvent(tx, {
@@ -227,6 +238,18 @@ export async function updateIssue(
       entityLabel: `${scope.projectKey}-${scope.issueNumber}`,
       diff: buildDiff(before as Record<string, unknown>, patch as Record<string, unknown>),
     });
+
+    if (input.assigneeId && input.assigneeId !== before.assigneeId) {
+      await notify(tx, {
+        recipientIds: [input.assigneeId],
+        actorId: actor.id,
+        orgId: scope.orgId,
+        projectId: scope.projectId,
+        type: "ISSUE_ASSIGNED",
+        text: `te asignó ${scope.projectKey}-${scope.issueNumber}: ${input.title ?? before.title}`,
+        path: `/p/${scope.projectKey}/${scope.issueNumber}`,
+      });
+    }
 
     await publishBoardEvent(tx, {
       projectId: scope.projectId,

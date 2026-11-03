@@ -1,6 +1,7 @@
 import "server-only";
 
 import { writeAudit } from "@/server/audit";
+import { notify } from "@/server/modules/notifications/service";
 import { can } from "@/server/authz/permissions";
 import { requireOrgAccess, requireProjectAccess } from "@/server/authz/resolve";
 import type { DbClient, TxClient } from "@/server/db";
@@ -112,7 +113,7 @@ async function addExistingUser(
   actor: Actor,
   args: Omit<InviteMemberInput, "projectId" | "projectRole"> & {
     user: { id: string; name: string; email: string };
-    project: { id: string; key: string } | null;
+    project: { id: string; key: string; name: string } | null;
     projectRole: ProjectRole | null;
   },
 ): Promise<InviteOutcome> {
@@ -166,6 +167,19 @@ async function addExistingUser(
         projectRole,
         project: project?.key ?? null,
       },
+    });
+
+    const org = await tx.organization.findUniqueOrThrow({
+      where: { id: args.orgId },
+      select: { name: true },
+    });
+    await notify(tx, {
+      recipientIds: [user.id],
+      actorId: actor.id,
+      orgId: args.orgId,
+      type: "MEMBER_ADDED",
+      text: project ? `te añadió al tablero ${project.name}` : `te añadió a ${org.name}`,
+      path: project ? `/p/${project.key}` : "/",
     });
   });
 
@@ -253,7 +267,7 @@ export async function acceptInvite(
       revokedAt: true,
       projectId: true,
       projectRole: true,
-      org: { select: { slug: true, archivedAt: true } },
+      org: { select: { name: true, slug: true, archivedAt: true } },
       project: { select: { id: true, key: true, archivedAt: true } },
       invitedById: true,
     },
@@ -333,6 +347,15 @@ export async function acceptInvite(
         invitedEmail: invitation.email,
         project: invitation.project?.key ?? null,
       },
+    });
+
+    await notify(tx, {
+      recipientIds: [invitation.invitedById],
+      actorId: actor.id,
+      orgId: invitation.orgId,
+      type: "INVITE_ACCEPTED",
+      text: `aceptó tu invitación a ${invitation.org.name}`,
+      path: "/members",
     });
   });
 
@@ -566,6 +589,16 @@ export async function addProjectMember(
       entityId: input.projectId,
       entityLabel: scope.projectKey,
       diff: { userEmail: member.user.email, projectRole: input.role },
+    });
+
+    await notify(tx, {
+      recipientIds: [input.userId],
+      actorId: actor.id,
+      orgId: scope.orgId,
+      projectId: input.projectId,
+      type: "MEMBER_ADDED",
+      text: `te añadió al tablero ${scope.projectKey}`,
+      path: `/p/${scope.projectKey}`,
     });
   });
 }

@@ -48,6 +48,15 @@ export async function pruneProjectEvents(
   return { deleted, batches };
 }
 
+/// Los avisos solo se miran recien llegados, y la lista muestra los ultimos 30.
+export const NOTIFICATION_RETENTION_DAYS = 90;
+
+export async function pruneOldNotifications(): Promise<number> {
+  const cutoff = new Date(Date.now() - NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const { count } = await db.notification.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return count;
+}
+
 /// Barrido de sesiones caducadas. Mismo motivo: `readSession` solo borra la
 /// que acaba de mirar, asi que las de quien no vuelve se quedan para siempre.
 export async function pruneExpiredSessions(): Promise<number> {

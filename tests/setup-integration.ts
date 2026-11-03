@@ -14,6 +14,7 @@ const { db } = await import("@/server/db");
 /// una tabla nueva que no aparezca aqui filtra datos entre tests, y es mejor
 /// que sea evidente al leer el archivo.
 const TABLES = [
+  "Notification",
   "ProjectEvent",
   "AuditLog",
   "Comment",

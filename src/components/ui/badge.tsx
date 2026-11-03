@@ -83,7 +83,34 @@ export function PriorityBadge({ priority }: { priority: IssuePriority }) {
   );
 }
 
-export function Avatar({ name, size = 24 }: { name: string; size?: number }) {
+export function Avatar({
+  name,
+  size = 24,
+  imageUrl,
+}: {
+  name: string;
+  size?: number;
+  imageUrl?: string | null;
+}) {
+  if (imageUrl) {
+    return (
+      // <img> y no next/image: la foto es de Google, y next/image exigiria
+      // abrir el optimizador a ese dominio para ahorrar unos pocos KB.
+      // no-referrer porque Google responde 403 a muchos referer ajenos.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt=""
+        title={name}
+        width={size}
+        height={size}
+        referrerPolicy="no-referrer"
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   const initials = name
     .split(/\s+/)
     .slice(0, 2)

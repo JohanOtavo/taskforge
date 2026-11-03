@@ -7,6 +7,7 @@ import { requireIssueAccess } from "@/server/authz/resolve";
 import { can } from "@/server/authz/permissions";
 import type { DbClient } from "@/server/db";
 import { forbidden, notFound } from "@/server/errors";
+import { notify } from "@/server/modules/notifications/service";
 import { publishBoardEvent } from "@/server/realtime/publish";
 
 export const createCommentSchema = z
@@ -57,6 +58,20 @@ export async function createComment(
       entityId: input.issueId,
       payload: { commentId: comment.id },
       actorId: actor.id,
+    });
+
+    const issue = await tx.issue.findUniqueOrThrow({
+      where: { id: input.issueId },
+      select: { title: true, reporterId: true, assigneeId: true },
+    });
+    await notify(tx, {
+      recipientIds: [issue.reporterId, issue.assigneeId],
+      actorId: actor.id,
+      orgId: scope.orgId,
+      projectId: scope.projectId,
+      type: "ISSUE_COMMENTED",
+      text: `comentó en ${scope.projectKey}-${scope.issueNumber}: ${issue.title}`,
+      path: `/p/${scope.projectKey}/${scope.issueNumber}`,
     });
 
     return comment;

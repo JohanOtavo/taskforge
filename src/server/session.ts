@@ -91,6 +91,15 @@ export async function destroySession(): Promise<void> {
   await db.session.deleteMany({ where: { tokenHash: hashToken(token) } });
 }
 
+/// Cierra las demas sesiones y deja viva la de este navegador.
+export async function destroyOtherSessions(userId: string): Promise<void> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  await db.session.deleteMany({
+    where: { userId, ...(token ? { tokenHash: { not: hashToken(token) } } : {}) },
+  });
+}
+
 /// Cerrar sesion en todos los dispositivos. Se invoca al cambiar la
 /// contrasena: una contrasena rotada con sesiones vivas no esta rotada.
 export async function destroyAllSessions(userId: string): Promise<void> {

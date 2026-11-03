@@ -20,6 +20,7 @@ export function CreateWorkspaceForm() {
         setError(result.message);
         return;
       }
+      router.push("/");
       router.refresh();
     });
   }

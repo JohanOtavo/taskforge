@@ -17,6 +17,15 @@ export const RESERVED_SLUGS = new Set([
   "static",
   "public",
   "health",
+  "account",
+  "profile",
+  "activity",
+  "cards",
+  "labs",
+  "help",
+  "shortcuts",
+  "workspaces",
+  "go",
 ]);
 
 export function slugify(input: string): string {

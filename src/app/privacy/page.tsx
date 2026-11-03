@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /// Describe lo que el codigo HACE, no una plantilla generica: si cambia lo que
 /// se guarda (por ejemplo, la IP de las sesiones), hay que cambiar esto.
 const CONTACT_EMAIL = "johanotavo2002@gmail.com";
-const UPDATED_AT = "30 de octubre de 2026";
+const UPDATED_AT = "2 de noviembre de 2026";
 
 export default function PrivacyPage() {
   return (
@@ -42,6 +42,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             Las invitaciones que envías: la dirección invitada y el rol que tendrá al entrar.
+          </li>
+          <li>
+            Tus notificaciones y tus preferencias sobre ellas. Los avisos se borran a los 90 días.
           </li>
         </ul>
       </section>
@@ -78,8 +81,9 @@ export default function PrivacyPage() {
       <section className="space-y-2">
         <h2 className="text-base font-semibold">Cookies</h2>
         <p>
-          Una sola cookie técnica de sesión, necesaria para mantenerte dentro. Sin cookies de
-          seguimiento ni de terceros.
+          Solo cookies técnicas: la de sesión, que te mantiene dentro; el espacio de trabajo activo;
+          el tema, si eliges uno; y una temporal al entrar con Google. Sin cookies de seguimiento ni
+          de terceros.
         </p>
       </section>
 
