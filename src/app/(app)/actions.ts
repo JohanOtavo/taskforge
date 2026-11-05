@@ -29,6 +29,7 @@ import {
 } from "@/server/modules/orgs/schema";
 import { createProjectSchema } from "@/server/modules/projects/schema";
 import * as phasesService from "@/server/modules/phases/service";
+import * as lifecycle from "@/server/modules/projects/lifecycle";
 
 /// Cada accion hace exactamente tres cosas: validar, resolver contexto y
 /// llamar al servicio. Si no tienen logica propia, no hay nada que probar en
@@ -168,6 +169,44 @@ export async function restoreIssueAction(
   });
 
   if (result.ok) revalidatePath("/p", "layout");
+  return result;
+}
+
+// ---------------------------------------------------- ciclo de proyectos
+
+export async function archiveProjectAction(projectId: unknown): Promise<Result<void>> {
+  const parsed = lifecycle.projectIdSchema.safeParse({ projectId });
+  if (!parsed.success) return invalid("Proyecto invalido.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await lifecycle.archiveProject(ctx.db, ctx.actor, parsed.data.projectId);
+  });
+  if (result.ok) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function restoreProjectAction(projectId: unknown): Promise<Result<void>> {
+  const parsed = lifecycle.projectIdSchema.safeParse({ projectId });
+  if (!parsed.success) return invalid("Proyecto invalido.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await lifecycle.restoreProject(ctx.db, ctx.actor, parsed.data.projectId);
+  });
+  if (result.ok) revalidatePath("/", "layout");
+  return result;
+}
+
+export async function deleteProjectAction(
+  projectId: unknown,
+  confirmKey: unknown,
+): Promise<Result<void>> {
+  const parsed = lifecycle.deleteProjectSchema.safeParse({ projectId, confirmKey });
+  if (!parsed.success) return invalid("Proyecto invalido.");
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await lifecycle.deleteProject(ctx.db, ctx.actor, parsed.data);
+  });
+  if (result.ok) revalidatePath("/", "layout");
   return result;
 }
 

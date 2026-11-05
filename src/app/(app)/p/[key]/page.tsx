@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Board } from "@/components/board/board";
 import { NewIssueForm } from "@/components/board/new-issue-form";
 import { PhaseBar } from "@/components/board/phase-bar";
+import { ArchiveProjectButton } from "@/components/layout/project-lifecycle";
 import { ProjectMembers } from "@/components/board/project-members";
 import { can } from "@/server/authz/permissions";
 import { requireCtx } from "@/server/context";
@@ -74,6 +75,10 @@ export default async function BoardPage({ params, searchParams }: PageProps<"/p/
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Solo el dueno del espacio o quien creo el proyecto. */}
+          {(workspace.role === "OWNER" || board.project.createdById === ctx.actor.id) && (
+            <ArchiveProjectButton projectId={board.project.id} name={board.project.name} />
+          )}
           <Link
             href={`/p/${board.project.key}/archived`}
             className="rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface-2 hover:text-text"

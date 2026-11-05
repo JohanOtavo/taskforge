@@ -1,13 +1,16 @@
 import Link from "next/link";
 
 import { CreateWorkspaceForm } from "@/components/layout/create-workspace-form";
+import { ArchivedProjectActions } from "@/components/layout/project-lifecycle";
 import { PriorityBadge } from "@/components/ui/badge";
+import { LocalDate } from "@/components/ui/local-date";
 import { Tilt } from "@/components/ui/tilt";
 import { NewProjectForm } from "@/components/layout/new-project-form";
 import { can } from "@/server/authz/permissions";
 import { requireCtx } from "@/server/context";
 import { getActiveWorkspace } from "@/server/current-org";
 import { listMyCards } from "@/server/modules/account/service";
+import { listArchivedProjects } from "@/server/modules/projects/lifecycle";
 import { listProjects } from "@/server/modules/projects/service";
 
 const CARDS_PREVIEW = 5;
@@ -33,9 +36,10 @@ export default async function ProjectsPage() {
     );
   }
 
-  const [projects, cards] = await Promise.all([
+  const [projects, cards, archived] = await Promise.all([
     listProjects(ctx.db, ctx.actor, workspace.id),
     listMyCards(ctx.db, ctx.actor),
+    listArchivedProjects(ctx.db, ctx.actor, workspace.id),
   ]);
   const canCreate = can(workspace.role, "project.create");
 
@@ -133,6 +137,36 @@ export default async function ProjectsPage() {
           )}
         </section>
       </div>
+
+      {archived.length > 0 && (
+        <details className="group slab rounded-2xl">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-4 font-display font-semibold [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="text-text-muted transition-transform group-open:rotate-90">
+              ›
+            </span>
+            Proyectos archivados
+            <span className="text-sm font-normal text-text-muted">{archived.length}</span>
+          </summary>
+          <ul className="divide-y divide-border border-t border-border">
+            {archived.map((project) => (
+              <li key={project.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <span className="stamp flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm">
+                  {project.key}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{project.name}</span>
+                  {project.archivedAt && (
+                    <span className="block text-xs text-text-muted">
+                      Archivado el <LocalDate date={project.archivedAt} />
+                    </span>
+                  )}
+                </span>
+                <ArchivedProjectActions project={project} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

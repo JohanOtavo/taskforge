@@ -35,6 +35,7 @@ export async function createProject(
         name: input.name,
         description: input.description ?? null,
         visibility: input.visibility,
+        createdById: actor.id,
         // Quien lo crea es administrador del proyecto, aunque en la
         // organizacion sea solo MEMBER.
         members: { create: { userId: actor.id, role: "ADMIN" } },
@@ -187,7 +188,14 @@ export async function getBoard(
   const [detail, columns] = await Promise.all([
     db.project.findUniqueOrThrow({
       where: { id: project.id },
-      select: { id: true, key: true, name: true, description: true, visibility: true },
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        description: true,
+        visibility: true,
+        createdById: true,
+      },
     }),
     db.boardColumn.findMany({
       where: { projectId: project.id },

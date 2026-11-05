@@ -32,6 +32,7 @@ export type BoardData = {
     name: string;
     description: string | null;
     visibility: "ORG" | "PRIVATE";
+    createdById: string | null;
   };
   columns: BoardColumnData[];
   role: "NONE" | "VIEWER" | "MEMBER" | "ADMIN" | "OWNER";

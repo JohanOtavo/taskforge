@@ -42,15 +42,16 @@ model User {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  sessions       Session[]
-  memberships    Membership[]
-  projectMembers ProjectMember[]
-  reportedIssues Issue[]         @relation("IssueReporter")
-  assignedIssues Issue[]         @relation("IssueAssignee")
-  comments       Comment[]
-  auditLogs      AuditLog[]
-  sentInvites    Invitation[]    @relation("InvitationInviter")
-  notifications  Notification[]
+  sessions        Session[]
+  memberships     Membership[]
+  projectMembers  ProjectMember[]
+  reportedIssues  Issue[]         @relation("IssueReporter")
+  assignedIssues  Issue[]         @relation("IssueAssignee")
+  comments        Comment[]
+  auditLogs       AuditLog[]
+  sentInvites     Invitation[]    @relation("InvitationInviter")
+  notifications   Notification[]
+  createdProjects Project[]       @relation("ProjectCreator")
 }
 
 /// Sesion opaca respaldada en base de datos. Solo se almacena el hash del
@@ -166,12 +167,17 @@ model Project {
   visibility   ProjectVisibility @default(ORG)
   /// Contador del numero legible (TF-42). Se incrementa atomicamente.
   issueCounter Int               @default(0)
+  /// Quien lo creo. Junto al dueno del espacio, es quien puede archivarlo o
+  /// eliminarlo. NULL en proyectos sin rastro de su creacion.
+  createdById  String?
 
   createdAt  DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime  @updatedAt @db.Timestamptz(6)
   archivedAt DateTime? @db.Timestamptz(6)
 
-  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  // SetNull: borrar a quien lo creo no borra el proyecto.
+  createdBy User?        @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   members     ProjectMember[]
   states      WorkflowState[]
