@@ -33,6 +33,7 @@ export default async function MembersPage() {
       }))}
       labels={labels}
       canInvite={can(current.role, "org.member.invite")}
+      canRename={can(current.role, "org.update")}
       canManageLabels={can(current.role, "org.label.manage")}
     />
   );

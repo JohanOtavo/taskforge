@@ -17,6 +17,7 @@ const ACTION_TEXT: Record<string, string> = {
   "membership.removed": "Expulsaste a",
   "membership.role_changed": "Cambiaste el rol de",
   "organization.created": "Creaste el espacio",
+  "organization.renamed": "Renombraste el espacio",
   "phase.created": "Creaste la fase",
   "phase.deleted": "Borraste la fase",
   "phase.renamed": "Renombraste la fase",

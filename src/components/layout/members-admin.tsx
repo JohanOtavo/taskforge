@@ -7,6 +7,7 @@ import {
   createLabelAction,
   inviteMemberAction,
   removeMemberAction,
+  renameWorkspaceAction,
   updateMemberRoleAction,
 } from "@/app/(app)/actions";
 import { Avatar, LabelChip } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ type Props = {
   labels: { id: string; name: string; color: string }[];
   canInvite: boolean;
   canManageLabels: boolean;
+  canRename: boolean;
 };
 
 const ROLE_TEXT: Record<OrgRole, string> = {
@@ -44,6 +46,7 @@ export function MembersAdmin({
   labels,
   canInvite,
   canManageLabels,
+  canRename,
 }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +104,26 @@ export function MembersAdmin({
         <h1 className="text-xl font-semibold">Equipo</h1>
         <p className="text-sm text-text-muted">{orgName}</p>
       </div>
+
+      {canRename && (
+        <section className="slab rounded-xl p-5">
+          <h2 className="mb-4 text-sm font-semibold">Nombre del espacio</h2>
+          <form
+            action={(formData) => run(() => renameWorkspaceAction(formData))}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <input type="hidden" name="orgId" value={orgId} />
+            <div className="min-w-56 flex-1">
+              <Field label="Nombre" htmlFor="workspace-name">
+                <Input name="name" defaultValue={orgName} required minLength={2} maxLength={120} />
+              </Field>
+            </div>
+            <Button type="submit" disabled={pending}>
+              Guardar nombre
+            </Button>
+          </form>
+        </section>
+      )}
 
       {error && (
         <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">

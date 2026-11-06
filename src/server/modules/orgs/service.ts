@@ -638,3 +638,28 @@ export async function removeProjectMember(
     });
   });
 }
+
+export async function renameOrganization(
+  db: DbClient,
+  actor: Actor,
+  input: { orgId: string; name: string },
+): Promise<void> {
+  await requireOrgAccess(db, actor.id, input.orgId, "org.update");
+
+  await db.$transaction(async (tx) => {
+    const before = await tx.organization.findUniqueOrThrow({
+      where: { id: input.orgId },
+      select: { name: true },
+    });
+    await tx.organization.update({ where: { id: input.orgId }, data: { name: input.name } });
+    await writeAudit(tx, {
+      orgId: input.orgId,
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: "organization.renamed",
+      entityType: "ORGANIZATION",
+      entityId: input.orgId,
+      entityLabel: `${before.name} → ${input.name}`,
+    });
+  });
+}

@@ -25,6 +25,7 @@ import {
   projectMemberSchema,
   removeMemberSchema,
   removeProjectMemberSchema,
+  renameOrganizationSchema,
   updateMemberRoleSchema,
 } from "@/server/modules/orgs/schema";
 import { createProjectSchema } from "@/server/modules/projects/schema";
@@ -77,6 +78,21 @@ export async function createWorkspaceAction(
     revalidatePath("/", "layout");
   }
   return result.ok ? { ok: true, data: { orgId: result.data.orgId } } : result;
+}
+
+export async function renameWorkspaceAction(formData: FormData): Promise<Result<null>> {
+  const parsed = parseForm(renameOrganizationSchema, formData);
+  if (!parsed.success) return invalid("Indica un nombre de al menos 2 caracteres.");
+
+  const result = await toResult(async () => {
+    const ctx = await requireCtx();
+    await orgsService.renameOrganization(ctx.db, ctx.actor, parsed.data);
+    return null;
+  });
+
+  // El nombre sale en la cabecera, en la portada y en el selector de espacios.
+  if (result.ok) revalidatePath("/", "layout");
+  return result;
 }
 
 export async function switchWorkspaceAction(orgId: unknown): Promise<Result<null>> {

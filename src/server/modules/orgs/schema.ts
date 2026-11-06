@@ -22,6 +22,11 @@ export const createOrganizationSchema = z
   .object({ name: z.string().trim().min(2, "Indica un nombre.").max(120) })
   .strict();
 
+/// Solo el nombre visible: el slug no cambia, asi que ningun enlace se rompe.
+export const renameOrganizationSchema = z
+  .object({ orgId: z.string().cuid(), name: z.string().trim().min(2, "Indica un nombre.").max(120) })
+  .strict();
+
 export const projectMemberSchema = z
   .object({
     projectId: z.string().cuid(),
